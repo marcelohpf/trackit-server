@@ -20,16 +20,20 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"fmt"
 
 	"github.com/trackit/jsonlog"
+  ldap "github.com/jtblin/go-ldap-client"
+
 	"github.com/trackit/trackit-server/models"
 )
 
 var (
-	ErrNotImplemented = errors.New("Not implemented")
-	ErrUserNotFound   = errors.New("User not found")
-	ErrUserExists     = errors.New("User already exists")
-	ErrFailedCreating = errors.New("Failed to create user")
+	ErrNotImplemented      = errors.New("Not implemented")
+	ErrUserNotFound        = errors.New("User not found")
+	ErrUserExists          = errors.New("User already exists")
+	ErrFailedCreating      = errors.New("Failed to create user")
+	ErrLDAPNotAuthenticate = errors.New("Failed authenticate user in LDAP")
 )
 
 // User is a user of the platform. It is different from models.User which is
@@ -208,6 +212,56 @@ func GetUserWithEmail(ctx context.Context, db models.XODB, email string) (User, 
 		return User{}, err
 	} else {
 		return UserFromDbUser(*dbUser), nil
+	}
+}
+
+func getLDAPAuthenticatedUser(user, password string) (bool, error) {
+
+	// It should read configs from config a file or environment variables
+	client := &ldap.LDAPClient{
+				Base:               "dc=ipa,dc=topaz-analytics,dc=com",
+				Host:               "ipa.topaz-analytics.com",
+				ServerName:         "ipa.topaz-analytics.com",
+				Port:               636,
+				UseSSL:             true,
+				InsecureSkipVerify: false,
+				BindDN:             fmt.Sprintf("uid=%s,cn=users,cn=accounts,dc=ipa,dc=topaz-analytics,dc=com", user),
+				BindPassword:       password,
+				UserFilter:         "(|(&(objectClass=person)(uid=%s)))",
+				GroupFilter:        "(|(&(objectClass=*)(member=uid=%s,cn=users,cn=accounts,dc=ipa,dc=topaz-analytics,dc=com)))",
+				Attributes:         []string{"uid", "gecos", "cn"},
+	}
+
+	ok, _, err := client.Authenticate(user, password)
+	if err != nil {
+		return false, err
+	}
+
+	if !ok {
+		return ok, ErrLDAPNotAuthenticate
+	}
+
+	return ok, err
+}
+
+
+// GetLDAPUserWithEmailPassword validate the user credentials in LDAP server to
+// then retrieve it from trackit
+func GetLDAPUserWithEmailAndPassword(ctx context.Context, db models.XODB, email string, password string) (User, error) {
+
+	logger := jsonlog.LoggerFromContextOrDefault(ctx)
+
+	ok, err := getLDAPAuthenticatedUser(email, password)
+	if ok {
+		// create a new user from ldap in trackit if it doens't exists
+		user, err := GetUserWithEmail(ctx, db, email)
+		if err == ErrUserNotFound {
+			user, err = CreateUserWithPassword(ctx, db, email, password, "")
+		}
+		return user, nil
+	} else {
+		logger.Error("Authentication with LDAP failed.", err.Error())
+		return User{}, err
 	}
 }
 

@@ -151,7 +151,7 @@
 			"revisionTime": "2018-07-25T21:42:05Z"
 		},
 		{
-			"checksumSHA1": "1QmQ3FqV37w0Zi44qv8pA1GeR0A=",
+			"checksumSHA1": "GQuRJY72iGQrufDqIaB50zG27u0=",
 			"path": "github.com/aws/aws-sdk-go/private/protocol/ec2query",
 			"revision": "ddfc3ca419279cf2f67b12719e51fe8500d0029d",
 			"revisionTime": "2018-07-25T21:42:05Z"
@@ -175,16 +175,16 @@
 			"revisionTime": "2018-07-25T21:42:05Z"
 		},
 		{
-			"checksumSHA1": "R00RL5jJXRYq1iiK1+PGvMfvXyM=",
-			"path": "github.com/aws/aws-sdk-go/private/protocol/jsonrpc",
-			"revision": "ddfc3ca419279cf2f67b12719e51fe8500d0029d",
-			"revisionTime": "2018-07-25T21:42:05Z"
-		},
-		{
 			"checksumSHA1": "CTsp/h3FbFg9QizH4bH1abLwljg=",
 			"path": "github.com/aws/aws-sdk-go/private/protocol/json/jsonutil",
 			"revision": "650063a3f68273cbd4861d4512ba3cc4d2898175",
 			"revisionTime": "2018-08-09T22:26:03Z"
+		},
+		{
+			"checksumSHA1": "R00RL5jJXRYq1iiK1+PGvMfvXyM=",
+			"path": "github.com/aws/aws-sdk-go/private/protocol/jsonrpc",
+			"revision": "ddfc3ca419279cf2f67b12719e51fe8500d0029d",
+			"revisionTime": "2018-07-25T21:42:05Z"
 		},
 		{
 			"checksumSHA1": "R00RL5jJXRYq1iiK1+PGvMfvXyM=",
@@ -223,13 +223,13 @@
 			"revisionTime": "2018-07-25T21:42:05Z"
 		},
 		{
-			"checksumSHA1": "Rx8tIQPEmYZhy1zbRpDmMBmGfvg=",
+			"checksumSHA1": "o+DFxugR5Cy/Wwlv7GSRRilTW4o=",
 			"path": "github.com/aws/aws-sdk-go/service/cloudwatch",
 			"revision": "ddfc3ca419279cf2f67b12719e51fe8500d0029d",
 			"revisionTime": "2018-07-25T21:42:05Z"
 		},
 		{
-			"checksumSHA1": "hGhUGbG0E3RrhhJpfKq6bKUebz4=",
+			"checksumSHA1": "a4Kb3tBW4zaoS8UFrkfU8MNHE8o=",
 			"path": "github.com/aws/aws-sdk-go/service/ec2",
 			"revision": "ddfc3ca419279cf2f67b12719e51fe8500d0029d",
 			"revisionTime": "2018-07-25T21:42:05Z"
@@ -317,6 +317,12 @@
 			"path": "github.com/jmespath/go-jmespath",
 			"revision": "c2b33e8439af944379acbdd9c3a5fe0bc44bd8a5",
 			"revisionTime": "2018-02-06T20:15:40Z"
+		},
+		{
+			"checksumSHA1": "KGAX0C/36vHJiw04Nrm3rohzW00=",
+			"path": "github.com/jtblin/go-ldap-client",
+			"revision": "b73f66626b33ca4ac4fd6558efbb062c4fe4e52c",
+			"revisionTime": "2017-02-23T12:19:19Z"
 		},
 		{
 			"checksumSHA1": "0UY6Yp9cpQjofjSVJnZAwGxrdGY=",
@@ -455,6 +461,12 @@
 			"path": "golang.org/x/tools/imports",
 			"revision": "0b88a3aa0751a3accc5cadec90e6c9bc88e8219e",
 			"revisionTime": "2017-10-07T15:42:58Z"
+		},
+		{
+			"checksumSHA1": "IElTu6wDmpCv8h3JPXAHjuy0Gb8=",
+			"path": "gopkg.in/ldap.v2",
+			"revision": "bb7a9ca6e4fbc2129e3db588a34bc970ffe811a9",
+			"revisionTime": "2017-11-23T04:56:18Z"
 		},
 		{
 			"checksumSHA1": "Uv6a/M9wO8QyNfKOHuQIg1X03Fg=",

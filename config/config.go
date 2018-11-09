@@ -33,6 +33,8 @@ var (
 	AuthIssuer string
 	// AuthSecret is the secret used to sign and verify JWT tokens.
 	AuthSecret string
+  // Use LDAP Authentication instead of user
+  LDAPAuthentication bool
 	// AwsRegion is the AWS region the product operates in.
 	AwsRegion string
 	// BackendId is an identifier for the current instance of the server.
@@ -102,6 +104,7 @@ func init() {
 	flag.StringVar(&SqlAddress, "sql-address", "trackit:trackitpassword@tcp(127.0.0.1)/trackit?parseTime=true", "The address (username, password, transport, address and database) for the SQL database.")
 	flag.StringVar(&AuthIssuer, "auth-issuer", "trackit", "The 'iss' field for the JWT tokens.")
 	flag.StringVar(&AuthSecret, "auth-secret", "trackitdefaultsecret", "The secret used to sign and verify JWT tokens.")
+	flag.BoolVar(&LDAPAuthentication, "use-ldap", false, "Authenticate the user in a LDAP server")
 	flag.StringVar(&AwsRegion, "aws-region", "us-east-1", "The AWS region the server operates in.")
 	flag.StringVar(&BackendId, "backend-id", "", "The ID to be sent to clients through the 'X-Backend-ID' field. Generated if left empty.")
 	flag.StringVar(&ReportsBucket, "reports-bucket", "", "The bucket name where the reports are stored. The feature is disabled if left empty.")

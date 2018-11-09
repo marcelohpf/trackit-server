@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	"github.com/trackit/jsonlog"
+	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/db"
 	"github.com/trackit/trackit-server/routes"
 )
@@ -59,11 +60,22 @@ func logIn(request *http.Request, a routes.Arguments) (int, interface{}) {
 	return logInWithValidBody(request, body, tx)
 }
 
+// loginUser trie to login user in LDAP (require configuration) or trackit
+func loginUser(request *http.Request, body loginRequestBody, tx *sql.Tx) (User,
+error) {
+
+	if config.LDAPAuthentication {
+		return GetLDAPUserWithEmailAndPassword(request.Context(), tx, body.Email, body.Password)
+	} else {
+		return GetUserWithEmailAndPassword(request.Context(), tx, body.Email, body.Password)
+	}
+}
+
 // logInWithValidBody tries to authenticate and log a user in using a
 // validated login request.
 func logInWithValidBody(request *http.Request, body loginRequestBody, tx *sql.Tx) (int, interface{}) {
 	logger := jsonlog.LoggerFromContextOrDefault(request.Context())
-	user, err := GetUserWithEmailAndPassword(request.Context(), tx, body.Email, body.Password)
+	user, err := loginUser(request, body, tx)
 	if err == nil {
 		if !user.AwsCustomerEntitlement {
 			logger.Warning("AWS entitlement failure.", user)
