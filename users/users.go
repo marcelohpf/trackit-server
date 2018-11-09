@@ -25,6 +25,7 @@ import (
 	"github.com/trackit/jsonlog"
   ldap "github.com/jtblin/go-ldap-client"
 
+	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/models"
 )
 
@@ -219,16 +220,16 @@ func getLDAPAuthenticatedUser(user, password string) (bool, error) {
 
 	// It should read configs from config a file or environment variables
 	client := &ldap.LDAPClient{
-				Base:               "dc=ipa,dc=topaz-analytics,dc=com",
-				Host:               "ipa.topaz-analytics.com",
-				ServerName:         "ipa.topaz-analytics.com",
-				Port:               636,
-				UseSSL:             true,
-				InsecureSkipVerify: false,
-				BindDN:             fmt.Sprintf("uid=%s,cn=users,cn=accounts,dc=ipa,dc=topaz-analytics,dc=com", user),
+				Base:               config.LDAPBase,
+				Host:               config.LDAPHost,
+				ServerName:         config.LDAPServerName,
+				Port:               config.LDAPPort,
+				UseSSL:             config.LDAPUseSSL,
+				InsecureSkipVerify: config.LDAPInsecureSkipVerify,
+				BindDN:             fmt.Sprintf(config.LDAPBindDNFormat, user),
 				BindPassword:       password,
-				UserFilter:         "(|(&(objectClass=person)(uid=%s)))",
-				GroupFilter:        "(|(&(objectClass=*)(member=uid=%s,cn=users,cn=accounts,dc=ipa,dc=topaz-analytics,dc=com)))",
+				UserFilter:         config.LDAPUserFilter,
+				GroupFilter:				config.LDAPGroupFilter,
 				Attributes:         []string{"uid", "gecos", "cn"},
 	}
 

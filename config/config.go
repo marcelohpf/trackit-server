@@ -33,6 +33,24 @@ var (
 	AuthIssuer string
 	// AuthSecret is the secret used to sign and verify JWT tokens.
 	AuthSecret string
+	// LDAPBase base names
+	LDAPBase string
+	// LDAPHost is the host address to LDAP authenticate a user
+	LDAPHost string
+	// LDAPServerName is the hostname of LDAP server
+	LDAPServerName string
+	// LDAPPort is the port to client connect
+	LDAPPort int
+	// LDAPUseSSL is the boolean wich determine a secure connection to LDAP
+	LDAPUseSSL bool
+	// LDAPUserFilter is the filter to search user in LDAP
+	LDAPUserFilter string
+	// LDAPGroupFilter is the filter to search user in LDAP
+	LDAPGroupFilter string
+	// LDAPInsecureSkipVerify is a flag to skip verification if connection is insecure
+	LDAPInsecureSkipVerify bool
+	// LDAPBindDNFormat is the string format for search user
+	LDAPBindDNFormat string
   // Use LDAP Authentication instead of user
   LDAPAuthentication bool
 	// AwsRegion is the AWS region the product operates in.
@@ -104,7 +122,16 @@ func init() {
 	flag.StringVar(&SqlAddress, "sql-address", "trackit:trackitpassword@tcp(127.0.0.1)/trackit?parseTime=true", "The address (username, password, transport, address and database) for the SQL database.")
 	flag.StringVar(&AuthIssuer, "auth-issuer", "trackit", "The 'iss' field for the JWT tokens.")
 	flag.StringVar(&AuthSecret, "auth-secret", "trackitdefaultsecret", "The secret used to sign and verify JWT tokens.")
-	flag.BoolVar(&LDAPAuthentication, "use-ldap", false, "Authenticate the user in a LDAP server")
+	flag.StringVar(&LDAPBase, "ldap-base", "", "The base name configuration for LDAP.")
+	flag.StringVar(&LDAPHost, "ldap-host", "", "The LDAP host IP or DNS name.")
+	flag.StringVar(&LDAPServerName, "ldap-hostname", "", "The LDAP server name.")
+	flag.IntVar(&LDAPPort, "ldap-port", 636, "The LDAP service port.")
+	flag.BoolVar(&LDAPUseSSL, "ldap-ssl", true, "Determine if LDAP client should use a secure connection.")
+	flag.StringVar(&LDAPUserFilter, "ldap-user-filter", "", "The filter to search users in LDAP.")
+	flag.StringVar(&LDAPGroupFilter, "ldap-group-filter", "", "The group filter to search users group in LDAP.")
+	flag.BoolVar(&LDAPInsecureSkipVerify, "ldap-insecure-skip", false, "")
+	flag.StringVar(&LDAPBindDNFormat, "ldap-bindDN-formater", "", "Define the string to be formated with uid of user.")
+	flag.BoolVar(&LDAPAuthentication, "use-ldap", false, "Authenticate the user in a LDAP server.")
 	flag.StringVar(&AwsRegion, "aws-region", "us-east-1", "The AWS region the server operates in.")
 	flag.StringVar(&BackendId, "backend-id", "", "The ID to be sent to clients through the 'X-Backend-ID' field. Generated if left empty.")
 	flag.StringVar(&ReportsBucket, "reports-bucket", "", "The bucket name where the reports are stored. The feature is disabled if left empty.")
