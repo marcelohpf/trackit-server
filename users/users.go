@@ -262,7 +262,9 @@ func GetLDAPUserWithEmailAndPassword(ctx context.Context, db models.XODB, email 
 		return user, nil
 	} else {
 		logger.Error("Authentication with LDAP failed.", err.Error())
-		return User{}, err
+		logger.Info("Try authenticate with trackit", nil)
+		return GetUserWithEmailAndPassword(ctx, db, email, password)
+		//return User{}, err
 	}
 }
 
