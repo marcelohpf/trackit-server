@@ -69,6 +69,12 @@ var tagsValuesQueryArgs = []routes.QueryArg{
 		Type:        routes.QueryArgString{},
 		Optional:    false,
 	},
+	routes.QueryArg{
+		Name:					"group",
+		Description:	"Group the keys aggregating it into a composed key",
+		Type:					routes.QueryArgBool{},
+		Optional:			true,
+	},
 }
 
 // tagsValuesQueryParams will store the parsed query params for /tags/values endpoint
@@ -79,6 +85,7 @@ type tagsValuesQueryParams struct {
 	DateEnd     time.Time `json:"end"`
 	TagsKeys    []string  `json:"keys"`
 	By          string    `json:"by"`
+	Group       bool			`json:"group"`
 }
 
 // getTagsValues returns tags and their values (cost) based on the query params, in JSON format.
@@ -91,6 +98,7 @@ func getTagsValues(request *http.Request, a routes.Arguments) (int, interface{})
 		DateEnd:     a[tagsValuesQueryArgs[2]].(time.Time).Add(time.Hour*time.Duration(23) + time.Minute*time.Duration(59) + time.Second*time.Duration(59)),
 		TagsKeys:    []string{},
 		By:          a[tagsValuesQueryArgs[4]].(string),
+		Group:			 false,
 	}
 	if a[tagsValuesQueryArgs[0]] != nil {
 		parsedParams.AccountList = a[tagsValuesQueryArgs[0]].([]string)
@@ -107,6 +115,9 @@ func getTagsValues(request *http.Request, a routes.Arguments) (int, interface{})
 	}
 	if getTagsValuesFilter(parsedParams.By).Filter == "error" {
 		return http.StatusBadRequest, errors.New("Invalid filter: " + parsedParams.By)
+	}
+	if a[tagsValuesQueryArgs[5]] != nil && a[tagsValuesQueryArgs[5]].(bool) == true {
+		return getGroupedTagsWithParsedParams(request.Context(), parsedParams)
 	}
 	return getTagsValuesWithParsedParams(request.Context(), parsedParams)
 }
