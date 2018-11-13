@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	go_errors "errors"
 	"net/http"
 	"strings"
 
@@ -164,7 +165,7 @@ func getGroupedTagsWithParsedParams(ctx context.Context, params tagsValuesQueryP
 // be returned, but instead of having a 500 status code, it will return the provided status code
 // with empty data
 func makeElasticSearchRequestForTagsValues(ctx context.Context, params tagsValuesQueryParams, client *elastic.Client) (*elastic.SearchResult, int, error) {
-	l := jsonlog.LoggerFromContextOrDefault(ctx)
+	// l := jsonlog.LoggerFromContextOrDefault(ctx)
 	filter := getTagsValuesFilter(params.By)
 	query := getTagsValuesQuery(params)
 	index := strings.Join(params.IndexList, ",")
@@ -182,25 +183,7 @@ func makeElasticSearchRequestForTagsValues(ctx context.Context, params tagsValue
 		SubAggregation("keys", elastic.NewTermsAggregation().Field("tags.key").Size(maxAggregationSize).
 			SubAggregation("tags", elastic.NewTermsAggregation().Field("tags.tag").Size(maxAggregationSize).
 				SubAggregation("rev", aggregation))))
-	res, err := search.Do(ctx)
-	if err != nil {
-		if elastic.IsNotFound(err) {
-			l.Warning("Query execution failed, ES index does not exists", map[string]interface{}{
-				"index": index,
-				"error": err.Error(),
-			})
-			return nil, http.StatusOK, err
-		} else if err.(*elastic.Error).Details.Type == "search_phase_execution_exception" {
-			l.Error("Error while getting data from ES", map[string]interface{}{
-				"type": fmt.Sprintf("%T", err),
-				"error": err,
-			})
-		} else {
-			l.Error("Query execution failed", map[string]interface{}{"error": err.Error()})
-		}
-		return nil, http.StatusInternalServerError, err
-	}
-	return res, http.StatusOK, nil
+	return runQueryElasticSearch(ctx, index, search)
 }
 
 // makeElasticSearchRequestForGroupTagsValues query in ElasticSearch for grouped tags
@@ -209,13 +192,18 @@ func makeElasticSearchRequestForGroupTagsValues(ctx context.Context, params tags
 	filter := getTagsValuesFilter(params.By)
 	query := getTagsValuesQuery(params)
 	index := strings.Join(params.IndexList, ",")
+	group_tags, err := getGroupTags(params)
+	if err != nil {
+		l.Error("Failed to get tags to aggregate it", err)
+		return nil, http.StatusBadRequest, err
+	}
 
 	aggregation := elastic.NewTermsAggregation().
 		Script(elastic.NewScriptInline("params._source.tags.sort((b,c) -> b['key'].compareTo(c['key'])); " +
 					 "List a = new ArrayList(); for(item in params._source.tags)" +
-					 " { if (params.tags_selected.contains(item.key)) {  a.add(item.tag); } " +
+					 " { if (params.group_tags.contains(item.key)) {  a.add(item.tag); } " +
 					 "  } return a.toString();").
-				Params(map[string]interface{}{"tags_selected": []string{"Name", "Environment"}})).
+				Params(group_tags)).
 			Size(maxAggregationSize)
 	if filter.Type == "time" {
 		aggregation.SubAggregation("filter", elastic.NewDateHistogramAggregation().
@@ -232,6 +220,13 @@ func makeElasticSearchRequestForGroupTagsValues(ctx context.Context, params tags
 	// Custom query aggregation
 	search := client.Search().Index(index).Size(0).Query(query)
 	search.Aggregation("data", aggregation)
+	return runQueryElasticSearch(ctx, index, search)
+}
+// runQueryElasticSearch run a giver search service and return the result with
+// http status
+func runQueryElasticSearch(ctx context.Context, index string, search *elastic.SearchService) (*elastic.SearchResult, int, error) {
+	l := jsonlog.LoggerFromContextOrDefault(ctx)
+
 	res, err := search.Do(ctx)
 	if err != nil {
 		if elastic.IsNotFound(err) {
@@ -252,7 +247,6 @@ func makeElasticSearchRequestForGroupTagsValues(ctx context.Context, params tags
 	}
 	return res, http.StatusOK, nil
 }
-
 // getTagsValuesQuery will generate a query for the ElasticSearch based on params
 func getTagsValuesQuery(params tagsValuesQueryParams) *elastic.BoolQuery {
 	query := elastic.NewBoolQuery()
@@ -291,6 +285,15 @@ func getTagsValuesFilter(filter string) FilterType {
 		}
 	}
 	return FilterType{"error", "error"}
+}
+
+// getGroupTags parser the params and return a parameters to run in
+// ElasticSearch query script
+func getGroupTags(params tagsValuesQueryParams) (map[string]interface{}, error) {
+	if len(params.TagsKeys) == 0 {
+		return nil, go_errors.New("Can't perform a query without tags to group")
+	}
+	return map[string] interface{} {"group_tags": params.TagsKeys,}, nil
 }
 
 // arrayContainsString returns true if a string is present in an array of string
