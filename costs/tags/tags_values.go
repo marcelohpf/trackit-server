@@ -123,6 +123,40 @@ func getTagsValuesWithParsedParams(ctx context.Context, params tagsValuesQueryPa
 	return http.StatusOK, response
 }
 
+// getGroupedTagsWithParsedParams will parse the data from ElasticSearch and
+// return it grouped by tags
+func getGroupedTagsWithParsedParams(ctx context.Context, params tagsValuesQueryParams) (int, interface{}) {
+	response := TagsValuesResponse{}
+	logger := jsonlog.LoggerFromContextOrDefault(ctx)
+	var typedDocument esGroupTagsValueResult;
+	res, returnCode, err := makeElasticSearchRequestForGroupTagsValues(ctx, params, es.Client)
+	if err != nil {
+		if returnCode == http.StatusOK {
+			return returnCode, response
+		}
+		return returnCode, errors.GetErrorMessage(ctx, err)
+	}
+	err = json.Unmarshal(*res.Aggregations["data"], &typedDocument)
+	if err != nil {
+		logger.Error("Error while unmarshaling", err)
+		return http.StatusInternalServerError, errors.GetErrorMessage(ctx, err)
+	}
+	var values []TagsValues
+	for _, tag_group := range typedDocument.Buckets {
+		var costs []TagValue
+		for _, cost := range tag_group.Filter.Buckets {
+			if cost.Time != "" {
+				costs = append(costs, TagValue{cost.Time, cost.Cost.Value})
+			} else {
+				costs = append(costs, TagValue{cost.Item.(string), cost.Cost.Value})
+			}
+		}
+		values = append(values, TagsValues{tag_group.TagGroup, costs})
+	}
+	response["GroupedTags"] = values;
+	return http.StatusOK, response
+}
+
 // makeElasticSearchRequestForTagsValues will make the actual request to the ElasticSearch
 // It will return the data, an http status code (as int) and an error.
 // Because an error can be generated, but is not critical and is not needed to be known by
@@ -148,6 +182,56 @@ func makeElasticSearchRequestForTagsValues(ctx context.Context, params tagsValue
 		SubAggregation("keys", elastic.NewTermsAggregation().Field("tags.key").Size(maxAggregationSize).
 			SubAggregation("tags", elastic.NewTermsAggregation().Field("tags.tag").Size(maxAggregationSize).
 				SubAggregation("rev", aggregation))))
+	res, err := search.Do(ctx)
+	if err != nil {
+		if elastic.IsNotFound(err) {
+			l.Warning("Query execution failed, ES index does not exists", map[string]interface{}{
+				"index": index,
+				"error": err.Error(),
+			})
+			return nil, http.StatusOK, err
+		} else if err.(*elastic.Error).Details.Type == "search_phase_execution_exception" {
+			l.Error("Error while getting data from ES", map[string]interface{}{
+				"type": fmt.Sprintf("%T", err),
+				"error": err,
+			})
+		} else {
+			l.Error("Query execution failed", map[string]interface{}{"error": err.Error()})
+		}
+		return nil, http.StatusInternalServerError, err
+	}
+	return res, http.StatusOK, nil
+}
+
+// makeElasticSearchRequestForGroupTagsValues query in ElasticSearch for grouped tags
+func makeElasticSearchRequestForGroupTagsValues(ctx context.Context, params tagsValuesQueryParams, client *elastic.Client) (*elastic.SearchResult, int, error) {
+	l := jsonlog.LoggerFromContextOrDefault(ctx)
+	filter := getTagsValuesFilter(params.By)
+	query := getTagsValuesQuery(params)
+	index := strings.Join(params.IndexList, ",")
+
+	aggregation := elastic.NewTermsAggregation().
+		Script(elastic.NewScriptInline("params._source.tags.sort((b,c) -> b['key'].compareTo(c['key'])); " +
+					 "List a = new ArrayList(); for(item in params._source.tags)" +
+					 " { if (params.tags_selected.contains(item.key)) {  a.add(item.tag); } " +
+					 "  } return a.toString();").
+				Params(map[string]interface{}{"tags_selected": []string{"Name", "Environment"}})).
+			Size(maxAggregationSize)
+	if filter.Type == "time" {
+		aggregation.SubAggregation("filter", elastic.NewDateHistogramAggregation().
+				Field("usageStartDate").MinDocCount(0).Interval(filter.Filter).
+					SubAggregation("cost", elastic.NewSumAggregation().
+						Field("unblendedCost")))
+	} else {
+		aggregation.SubAggregation("filter", elastic.NewTermsAggregation().
+			Field(filter.Filter).Size(maxAggregationSize).
+				SubAggregation("cost",
+					elastic.NewSumAggregation().Field("unblendedCost")))
+	}
+
+	// Custom query aggregation
+	search := client.Search().Index(index).Size(0).Query(query)
+	search.Aggregation("data", aggregation)
 	res, err := search.Do(ctx)
 	if err != nil {
 		if elastic.IsNotFound(err) {
