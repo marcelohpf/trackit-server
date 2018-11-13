@@ -53,6 +53,13 @@ type (
 		} `json:"buckets"`
 	}
 
+	esGroupTagsValueResult struct {
+		Buckets []struct {
+			TagGroup string `json:"key"`
+			Filter esFilterResult `json:"filter"`
+		} `json:"buckets"`
+	}
+
 	esFilterResult struct {
 		Buckets []struct {
 			Time string      `json:"key_as_string"`
