@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"sync"
 	"time"
+	"regexp"
 
 	"github.com/trackit/jsonlog"
 
@@ -42,15 +43,17 @@ type (
 
 	// Instance contains the information of an EC2 instance
 	Instance struct {
-		Id         string             `json:"id"`
-		Region     string             `json:"region"`
-		State      string             `json:"state"`
-		Purchasing string             `json:"purchasing"`
-		KeyPair    string             `json:"keyPair"`
-		Type       string             `json:"type"`
-		Tags       []Tag              `json:"tags"`
-		Costs      map[string]float64 `json:"costs"`
-		Stats      Stats              `json:"stats"`
+		Id                  string              `json:"id"`
+		Region              string              `json:"region"`
+		State               string              `json:"state"`
+		Purchasing          string              `json:"purchasing"`
+		KeyPair             string              `json:"keyPair"`
+		Type                string              `json:"type"`
+		Tags                []Tag               `json:"tags"`
+		Costs               map[string]float64  `json:"costs"`
+		Stats               Stats               `json:"stats"`
+		NormalizationFactor float64             `json:"normalizationFactor"`
+		Family              string              `json:"family"`
 	}
 
 	// Stats contains statistics of an instance get on CloudWatch
@@ -161,4 +164,34 @@ func merge(cs ...<-chan Instance) <-chan Instance {
 		close(out)
 	}()
 	return out
+}
+
+// normalizeInstanceType function to help normalize the compational factor of a
+// instance as https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/enhanced-lineitem-columns.html
+func familyNormalizeFactor(instanceType string) (string, float64) {
+	normalizationFactor := map[string]float64{
+		"nano": 0.25,
+		"micro":    0.5,
+		"small":    1,
+		"medium":   2,
+		"large":    4,
+		"xlarge":   8,
+		"2xlarge":  16,
+		"4xlarge":  32,
+		"8xlarge":  64,
+		"9xlarge":  72,
+		"10xlarge": 80,
+		"12xlarge": 96,
+		"16xlarge": 128,
+		"18xlarge": 144,
+		"24xlarge": 192,
+		"32xlarge": 256,
+	}
+	regex, _ := regexp.Compile("(.+)\\.([0-9]*x?[a-z]+$)")
+	matchs := regex.FindStringSubmatch(instanceType)
+	if len(matchs) == 3 {
+		return matchs[1], normalizationFactor[matchs[2]]
+	} else {
+		return "unkown", 0
+	}
 }

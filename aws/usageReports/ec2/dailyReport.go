@@ -49,16 +49,20 @@ func fetchDailyInstancesList(ctx context.Context, creds *credentials.Credentials
 		for _, instance := range reservation.Instances {
 			stats := getInstanceStats(ctx, instance, sess, start, end)
 			costs := make(map[string]float64, 0)
+			awsType := aws.StringValue(instance.InstanceType)
+			family, normalizationFactor := familyNormalizeFactor(awsType)
 			instanceChan <- Instance{
-				Id:         aws.StringValue(instance.InstanceId),
-				Region:     aws.StringValue(instance.Placement.AvailabilityZone),
-				State:      aws.StringValue(instance.State.Name),
-				Purchasing: getPurchasingOption(instance),
-				KeyPair:    aws.StringValue(instance.KeyName),
-				Tags:       getInstanceTag(instance.Tags),
-				Type:       aws.StringValue(instance.InstanceType),
-				Costs:      costs,
-				Stats:      stats,
+				Id:                  aws.StringValue(instance.InstanceId),
+				Region:              aws.StringValue(instance.Placement.AvailabilityZone),
+				State:               aws.StringValue(instance.State.Name),
+				Purchasing:          getPurchasingOption(instance),
+				KeyPair:             aws.StringValue(instance.KeyName),
+				Tags:                getInstanceTag(instance.Tags),
+				Type:                awsType,
+				Costs:               costs,
+				Stats:               stats,
+				NormalizationFactor: normalizationFactor,
+				Family:              family,
 			}
 		}
 	}

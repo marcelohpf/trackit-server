@@ -75,6 +75,12 @@ const TemplateLineItem = `
 						"type": {
 							"type": "keyword"
 						},
+						"normalizationFactor": {
+							"type": "keyword"
+						},
+						"family": {
+							"type": "keyword"
+						},
 						"tags": {
 							"type": "nested",
 							"properties": {
