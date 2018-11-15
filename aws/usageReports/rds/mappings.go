@@ -67,6 +67,12 @@ const TemplateRDSReport = `
 						"type": {
 							"type": "keyword"
 						},
+						"family": {
+							"type": "keyword"
+						},
+						"normalizationFactor": {
+							"type": "keyword"
+						},
 						"engine": {
 							"type": "keyword"
 						},

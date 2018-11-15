@@ -170,7 +170,7 @@ func merge(cs ...<-chan Instance) <-chan Instance {
 // instance as https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/enhanced-lineitem-columns.html
 func familyNormalizeFactor(instanceType string) (string, float64) {
 	normalizationFactor := map[string]float64{
-		"nano": 0.25,
+		"nano":     0.25,
 		"micro":    0.5,
 		"small":    1,
 		"medium":   2,

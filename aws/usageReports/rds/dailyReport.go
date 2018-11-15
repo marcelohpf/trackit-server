@@ -47,15 +47,19 @@ func fetchDailyInstancesList(ctx context.Context, creds *credentials.Credentials
 	}
 	for _, DBInstance := range instances.DBInstances {
 		stats := getInstanceStats(ctx, DBInstance, sess, start, end)
+		dbInstanceClass := aws.StringValue(DBInstance.DBInstanceClass)
+		family, normalizationFactor := familyNormalizeFactor(dbInstanceClass)
 		InstanceChan <- Instance{
 			DBInstanceIdentifier: aws.StringValue(DBInstance.DBInstanceIdentifier),
 			AvailabilityZone:     aws.StringValue(DBInstance.AvailabilityZone),
-			DBInstanceClass:      aws.StringValue(DBInstance.DBInstanceClass),
+			DBInstanceClass:      dbInstanceClass,
 			Engine:               aws.StringValue(DBInstance.Engine),
 			AllocatedStorage:     aws.Int64Value(DBInstance.AllocatedStorage),
 			MultiAZ:              aws.BoolValue(DBInstance.MultiAZ),
 			Costs:                make(map[string]float64, 0),
 			Stats:                stats,
+			Family:               family,
+			NormalizationFactor:  normalizationFactor,
 		}
 	}
 	return nil

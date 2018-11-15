@@ -270,14 +270,15 @@ func createQueryAccountFilter(accountList []string) *elastic.TermsQuery {
 // getTagsValuesFilter returns a string of the field to filter
 func getTagsValuesFilter(filter string) FilterType {
 	var filters = map[string]FilterType{
-		"product":          {"productCode",     "term"},
-		"region":           {"region",          "term"},
-		"account":          {"usageAccountId",  "term"},
-		"availabilityzone": {"availabilityZone","term"},
-		"day":              {"day",             "time"},
-		"week":             {"week",            "time"},
-		"month":            {"month",           "time"},
-		"year":             {"year",            "time"},
+		"normalization":    {"normalizationFactor","term"},
+		"product":          {"productCode",        "term"},
+		"region":           {"region",             "term"},
+		"account":          {"usageAccountId",     "term"},
+		"availabilityzone": {"availabilityZone",   "term"},
+		"day":              {"day",                "time"},
+		"week":             {"week",               "time"},
+		"month":            {"month",              "time"},
+		"year":             {"year",               "time"},
 	}
 	for i := range filters {
 		if i == filter {
