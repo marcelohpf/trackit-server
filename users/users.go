@@ -50,12 +50,29 @@ type User struct {
 // CreateUserWithPassword creates a user with an email and a password. A nil
 // error indicates a success.
 func CreateUserWithPassword(ctx context.Context, db models.XODB, email string, password string, customerIdentifier string) (User, error) {
-	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	dbUser := models.User{
 		Email: email,
 		AwsCustomerIdentifier: customerIdentifier,
 		AwsCustomerEntitlement: true,
 	}
+	return saveUserWithPassword(ctx, db, password, dbUser)
+}
+
+// CreateUserWithParentIdLDAP create a user with email, password and a parent
+// id. A nil error indicates a success.
+func CreateUserWithParentIdLDAP(ctx context.Context, db models.XODB, email string, password string) (User, error) {
+	dbUser := models.User{
+		Email: email,
+		AwsCustomerIdentifier: "",
+		AwsCustomerEntitlement: true,
+		ParentUserID: sql.NullInt64{int64(1), true},
+	}
+	return saveUserWithPassword(ctx, db, password, dbUser)
+}
+
+// saveUserWithPassword save a object user and handler the erros
+func saveUserWithPassword(ctx context.Context, db models.XODB, password string, dbUser models.User) (User, error) {
+	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	auth, err := getPasswordHash(password)
 	if err != nil {
 		logger.Error("Failed to create password hash.", err.Error())
@@ -68,6 +85,7 @@ func CreateUserWithPassword(ctx context.Context, db models.XODB, email string, p
 	}
 	return UserFromDbUser(dbUser), err
 }
+
 
 // CreateUserWithParent creates a viewer user with an email and a parent. A nil
 // error indicates a success.
@@ -257,7 +275,7 @@ func GetLDAPUserWithEmailAndPassword(ctx context.Context, db models.XODB, email 
 		// create a new user from ldap in trackit if it doens't exists
 		user, err := GetUserWithEmail(ctx, db, email)
 		if err == ErrUserNotFound {
-			user, err = CreateUserWithPassword(ctx, db, email, password, "")
+			user, err = CreateUserWithParentIdLDAP(ctx, db, email, password)
 		}
 		return user, nil
 	} else {
