@@ -85,6 +85,14 @@ const TemplateLineItem = `
 					"type": "keyword",
 					"norms": false
 				},
+				"lineItemDescription": {
+					"type": "keyword",
+					"norms": false
+				},
+				"normalizationFactor": {
+					"type": "keyword",
+					"norms": false
+				},
 				"region": {
 					"type": "keyword",
 					"norms": false
