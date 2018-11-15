@@ -93,15 +93,16 @@ type (
 
 	// Instance contains the information of an EC2 instance
 	Instance struct {
-		Id         string             `json:"id"`
-		Region     string             `json:"region"`
-		State      string             `json:"state"`
-		Purchasing string             `json:"purchasing"`
-		KeyPair    string             `json:"keyPair"`
-		Type       string             `json:"type"`
-		Tags       map[string]string  `json:"tags"`
-		Costs      map[string]float64 `json:"costs"`
-		Stats      Stats              `json:"stats"`
+		Id                  string             `json:"id"`
+		Region              string             `json:"region"`
+		State               string             `json:"state"`
+		Purchasing          string             `json:"purchasing"`
+		KeyPair             string             `json:"keyPair"`
+		Type                string             `json:"type"`
+		Tags                map[string]string  `json:"tags"`
+		Costs               map[string]float64 `json:"costs"`
+		Stats               Stats              `json:"stats"`
+		NormalizationFactor float64            `json:"normalizationFactor"`
 	}
 
 	// Stats contains statistics of an instance get on CloudWatch
@@ -146,14 +147,15 @@ func getEc2InstanceReportResponse(oldInstance ec2.InstanceReport) InstanceReport
 		ReportType: oldInstance.ReportType,
 		ReportDate: oldInstance.ReportDate,
 		Instance: Instance{
-			Id:         oldInstance.Instance.Id,
-			Region:     oldInstance.Instance.Region,
-			State:      oldInstance.Instance.State,
-			Purchasing: oldInstance.Instance.Purchasing,
-			KeyPair:    oldInstance.Instance.KeyPair,
-			Type:       oldInstance.Instance.Type,
-			Tags:       tags,
-			Costs:      oldInstance.Instance.Costs,
+			Id:                  oldInstance.Instance.Id,
+			Region:              oldInstance.Instance.Region,
+			State:               oldInstance.Instance.State,
+			Purchasing:          oldInstance.Instance.Purchasing,
+			KeyPair:             oldInstance.Instance.KeyPair,
+			Type:                oldInstance.Instance.Type,
+			Tags:                tags,
+			Costs:               oldInstance.Instance.Costs,
+			NormalizationFactor: oldInstance.Instance.NormalizationFactor,
 			Stats: Stats{
 				Cpu: Cpu{
 					Average: oldInstance.Instance.Stats.Cpu.Average,
