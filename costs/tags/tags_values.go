@@ -17,9 +17,10 @@ package tags
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	go_errors "errors"
+	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/trackit/jsonlog"
@@ -56,8 +57,8 @@ type (
 
 	esGroupTagsValueResult struct {
 		Buckets []struct {
-			TagGroup string `json:"key"`
-			Filter esFilterResult `json:"filter"`
+			TagGroup string         `json:"key"`
+			Filter   esFilterResult `json:"filter"`
 		} `json:"buckets"`
 	}
 
@@ -65,7 +66,7 @@ type (
 		Buckets []struct {
 			Time string      `json:"key_as_string"`
 			Item interface{} `json:"key"`
-			Cost    struct {
+			Cost struct {
 				Value float64 `json:"value"`
 			} `json:"cost"`
 		} `json:"buckets"`
@@ -129,7 +130,7 @@ func getTagsValuesWithParsedParams(ctx context.Context, params tagsValuesQueryPa
 func getGroupedTagsWithParsedParams(ctx context.Context, params tagsValuesQueryParams) (int, interface{}) {
 	response := TagsValuesResponse{}
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	var typedDocument esGroupTagsValueResult;
+	var typedDocument esGroupTagsValueResult
 	res, returnCode, err := makeElasticSearchRequestForGroupTagsValues(ctx, params, es.Client)
 	if err != nil {
 		if returnCode == http.StatusOK {
@@ -154,7 +155,9 @@ func getGroupedTagsWithParsedParams(ctx context.Context, params tagsValuesQueryP
 		}
 		values = append(values, TagsValues{tag_group.TagGroup, costs})
 	}
-	response["GroupedTags"] = values;
+	sort.Strings(params.TagsKeys)
+	keys := strings.Join(params.TagsKeys, ",")
+	response[keys] = values
 	return http.StatusOK, response
 }
 
@@ -176,7 +179,7 @@ func makeElasticSearchRequestForTagsValues(ctx context.Context, params tagsValue
 		aggregation = elastic.NewReverseNestedAggregation().
 			SubAggregation("filter", elastic.NewDateHistogramAggregation().
 				Field("usageStartDate").MinDocCount(0).Interval(filter.Filter).
-					SubAggregation("cost", elastic.NewSumAggregation().Field("unblendedCost")))
+				SubAggregation("cost", elastic.NewSumAggregation().Field("unblendedCost")))
 	}
 	search := client.Search().Index(index).Size(0).Query(query)
 	search.Aggregation("data", elastic.NewNestedAggregation().Path("tags").
@@ -200,21 +203,21 @@ func makeElasticSearchRequestForGroupTagsValues(ctx context.Context, params tags
 
 	aggregation := elastic.NewTermsAggregation().
 		Script(elastic.NewScriptInline("params._source.tags.sort((b,c) -> b['key'].compareTo(c['key'])); " +
-					 "List a = new ArrayList(); for(item in params._source.tags)" +
-					 " { if (params.group_tags.contains(item.key)) {  a.add(item.tag); } " +
-					 "  } return a.toString();").
-				Params(group_tags)).
-			Size(maxAggregationSize)
+			"List a = new ArrayList(); for(item in params._source.tags)" +
+			" { if (params.group_tags.contains(item.key)) {  a.add(item.tag); } " +
+			"  } return a.toString();").
+			Params(group_tags)).
+		Size(maxAggregationSize)
 	if filter.Type == "time" {
 		aggregation.SubAggregation("filter", elastic.NewDateHistogramAggregation().
-				Field("usageStartDate").MinDocCount(0).Interval(filter.Filter).
-					SubAggregation("cost", elastic.NewSumAggregation().
-						Field("unblendedCost")))
+			Field("usageStartDate").MinDocCount(0).Interval(filter.Filter).
+			SubAggregation("cost", elastic.NewSumAggregation().
+				Field("unblendedCost")))
 	} else {
 		aggregation.SubAggregation("filter", elastic.NewTermsAggregation().
 			Field(filter.Filter).Size(maxAggregationSize).
-				SubAggregation("cost",
-					elastic.NewSumAggregation().Field("unblendedCost")))
+			SubAggregation("cost",
+				elastic.NewSumAggregation().Field("unblendedCost")))
 	}
 
 	// Custom query aggregation
@@ -222,6 +225,7 @@ func makeElasticSearchRequestForGroupTagsValues(ctx context.Context, params tags
 	search.Aggregation("data", aggregation)
 	return runQueryElasticSearch(ctx, index, search)
 }
+
 // runQueryElasticSearch run a giver search service and return the result with
 // http status
 func runQueryElasticSearch(ctx context.Context, index string, search *elastic.SearchService) (*elastic.SearchResult, int, error) {
@@ -237,7 +241,7 @@ func runQueryElasticSearch(ctx context.Context, index string, search *elastic.Se
 			return nil, http.StatusOK, err
 		} else if err.(*elastic.Error).Details.Type == "search_phase_execution_exception" {
 			l.Error("Error while getting data from ES", map[string]interface{}{
-				"type": fmt.Sprintf("%T", err),
+				"type":  fmt.Sprintf("%T", err),
 				"error": err,
 			})
 		} else {
@@ -247,6 +251,7 @@ func runQueryElasticSearch(ctx context.Context, index string, search *elastic.Se
 	}
 	return res, http.StatusOK, nil
 }
+
 // getTagsValuesQuery will generate a query for the ElasticSearch based on params
 func getTagsValuesQuery(params tagsValuesQueryParams) *elastic.BoolQuery {
 	query := elastic.NewBoolQuery()
@@ -294,7 +299,7 @@ func getGroupTags(params tagsValuesQueryParams) (map[string]interface{}, error) 
 	if len(params.TagsKeys) == 0 {
 		return nil, go_errors.New("Can't perform a query without tags to group")
 	}
-	return map[string] interface{} {"group_tags": params.TagsKeys,}, nil
+	return map[string]interface{}{"group_tags": params.TagsKeys}, nil
 }
 
 // arrayContainsString returns true if a string is present in an array of string
