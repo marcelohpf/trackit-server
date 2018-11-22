@@ -112,8 +112,10 @@ func getTagsValuesWithParsedParams(ctx context.Context, params tagsValuesQueryPa
 			for _, cost := range tag.Rev.Filter.Buckets {
 				if cost.Time != "" {
 					costs = append(costs, TagValue{cost.Time, cost.Cost.Value})
-				} else {
-					costs = append(costs, TagValue{cost.Item.(string), cost.Cost.Value})
+				} else if item, err := cost.Item.(string); err {
+					costs = append(costs, TagValue{item, cost.Cost.Value})
+				} else if item, err := cost.Item.(float64); err {
+					costs = append(costs, TagValue{fmt.Sprintf("%.2f", item), cost.Cost.Value})
 				}
 			}
 			values = append(values, TagsValues{tag.Tag, costs})
@@ -149,8 +151,10 @@ func getGroupedTagsWithParsedParams(ctx context.Context, params tagsValuesQueryP
 		for _, cost := range tag_group.Filter.Buckets {
 			if cost.Time != "" {
 				costs = append(costs, TagValue{cost.Time, cost.Cost.Value})
-			} else {
-				costs = append(costs, TagValue{cost.Item.(string), cost.Cost.Value})
+			} else if item, err := cost.Item.(string); err {
+				costs = append(costs, TagValue{item, cost.Cost.Value})
+			} else if item, err := cost.Item.(float64); err {
+				costs = append(costs, TagValue{fmt.Sprintf("%.2f", item), cost.Cost.Value})
 			}
 		}
 		values = append(values, TagsValues{tag_group.TagGroup, costs})
@@ -275,15 +279,15 @@ func createQueryAccountFilter(accountList []string) *elastic.TermsQuery {
 // getTagsValuesFilter returns a string of the field to filter
 func getTagsValuesFilter(filter string) FilterType {
 	var filters = map[string]FilterType{
-		"normalization":    {"normalizationFactor","term"},
-		"product":          {"productCode",        "term"},
-		"region":           {"region",             "term"},
-		"account":          {"usageAccountId",     "term"},
-		"availabilityzone": {"availabilityZone",   "term"},
-		"day":              {"day",                "time"},
-		"week":             {"week",               "time"},
-		"month":            {"month",              "time"},
-		"year":             {"year",               "time"},
+		"normalization":    {"normalizationFactor", "term"},
+		"product":          {"productCode", "term"},
+		"region":           {"region", "term"},
+		"account":          {"usageAccountId", "term"},
+		"availabilityzone": {"availabilityZone", "term"},
+		"day":              {"day", "time"},
+		"week":             {"week", "time"},
+		"month":            {"month", "time"},
+		"year":             {"year", "time"},
 	}
 	for i := range filters {
 		if i == filter {

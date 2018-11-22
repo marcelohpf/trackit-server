@@ -352,10 +352,10 @@ func isPrefixValid(p string) error {
 	}
 }
 
-func isBillRepositoryAccessible(ctx context.Context, aa aws.AwsAccount, body postBillRepositoryBody) (error) {
+func isBillRepositoryAccessible(ctx context.Context, aa aws.AwsAccount, body postBillRepositoryBody) error {
 	l := jsonlog.LoggerFromContextOrDefault(ctx)
 	_, _, err := getServiceForRepository(ctx, aa, BillRepository{Bucket: body.Bucket, Prefix: body.Prefix})
-	if (err != nil) {
+	if err != nil {
 		l.Warning("Trying to add a bad bill location.", err.Error())
 		return errors.New("Couldn't access to this bill location.")
 	}

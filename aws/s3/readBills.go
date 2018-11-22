@@ -94,30 +94,41 @@ type billRepositoryWithRegion struct {
 }
 
 type LineItem struct {
-	BillRepositoryId    int               `csv:"-"                            json:"billRepositoryId"`
-	LineItemId          string            `csv:"identity/LineItemId"          json:"lineItemId"`
-	TimeInterval        string            `csv:"identity/TimeInterval"        json:"-"`
-	InvoiceId           string            `csv:"bill/InvoiceId"               json:"invoiceId"`
-	BillingPeriodStart  string            `csv:"bill/BillingPeriodStartDate"  json:"-"`
-	BillingPeriodEnd    string            `csv:"bill/BillingPeriodEndDate"    json:"-"`
-	UsageAccountId      string            `csv:"lineItem/UsageAccountId"      json:"usageAccountId"`
-	LineItemType        string            `csv:"lineItem/LineItemType"        json:"lineItemType"`
-	UsageStartDate      string            `csv:"lineItem/UsageStartDate"      json:"usageStartDate"`
-	UsageEndDate        string            `csv:"lineItem/UsageEndDate"        json:"usageEndDate""`
-	ProductCode         string            `csv:"lineItem/ProductCode"         json:"productCode"`
-	UsageType           string            `csv:"lineItem/UsageType"           json:"usageType"`
-	Operation           string            `csv:"lineItem/Operation"           json:"operation"`
-	AvailabilityZone    string            `csv:"lineItem/AvailabilityZone"    json:"availabilityZone"`
-	NormalizationFactor string            `csv:"lineItem/NormalizationFactor" json:"normalizationFactor"`
-	Region              string            `csv:"product/region"               json:"region"`
-	ResourceId          string            `csv:"lineItem/ResourceId"          json:"resourceId"`
-	UsageAmount         string            `csv:"lineItem/UsageAmount"         json:"usageAmount"`
-	ServiceCode         string            `csv:"product/servicecode"          json:"serviceCode"`
-	CurrencyCode        string            `csv:"lineItem/CurrencyCode"        json:"currencyCode"`
-	UnblendedCost       string            `csv:"lineItem/UnblendedCost"       json:"unblendedCost"`
-	TaxType             string            `csv:"lineItem/TaxType"             json:"taxType"`
-	Any                 map[string]string `csv:",any"                         json:"-"`
-	Tags                []LineItemTags    `csv:"-"                            json:"tags,omitempty"`
+	BillRepositoryId              int               `csv:"-"                            json:"billRepositoryId"`
+	LineItemId                    string            `csv:"identity/LineItemId"          json:"lineItemId"`
+	TimeInterval                  string            `csv:"identity/TimeInterval"        json:"-"`
+	InvoiceId                     string            `csv:"bill/InvoiceId"               json:"invoiceId"`
+	BillingPeriodStart            string            `csv:"bill/BillingPeriodStartDate"  json:"-"`
+	BillingPeriodEnd              string            `csv:"bill/BillingPeriodEndDate"    json:"-"`
+	UsageAccountId                string            `csv:"lineItem/UsageAccountId"      json:"usageAccountId"`
+	LineItemType                  string            `csv:"lineItem/LineItemType"        json:"lineItemType"`
+	UsageStartDate                string            `csv:"lineItem/UsageStartDate"      json:"usageStartDate"`
+	UsageEndDate                  string            `csv:"lineItem/UsageEndDate"        json:"usageEndDate""`
+	ProductCode                   string            `csv:"lineItem/ProductCode"         json:"productCode"`
+	UsageType                     string            `csv:"lineItem/UsageType"           json:"usageType"`
+	Operation                     string            `csv:"lineItem/Operation"           json:"operation"`
+	AvailabilityZone              string            `csv:"lineItem/AvailabilityZone"    json:"availabilityZone"`
+	NormalizationFactor           string            `csv:"lineItem/NormalizationFactor" json:"normalizationFactor"`
+	Region                        string            `csv:"product/region"               json:"region"`
+	ResourceId                    string            `csv:"lineItem/ResourceId"          json:"resourceId"`
+	UsageAmount                   string            `csv:"lineItem/UsageAmount"         json:"usageAmount"`
+	ServiceCode                   string            `csv:"product/servicecode"          json:"serviceCode"`
+	CurrencyCode                  string            `csv:"lineItem/CurrencyCode"        json:"currencyCode"`
+	UnblendedCost                 string            `csv:"lineItem/UnblendedCost"       json:"unblendedCost"`
+	TaxType                       string            `csv:"lineItem/TaxType"             json:"taxType"`
+	NormalizedUsageAmount         string            `csv:"lineItem/NormalizedUsageAmount" json:"normalizedUsageAmount"` //float
+	InstanceTypeFamily            string            `csv:"product/instanceTypeFamily" json:"instanceTypeFamily"`
+	Term                          string            `csv:"pricing/term" json:"term"`
+	NormalizedUnitsPerReservation string            `csv:"reservation/NormalizedUnitsPerReservation" json:"normalizedUnitsPerReservation"` //float
+	NumberOfReservations          string            `csv:"reservation/NumberOfReservations" json:"numberOfReservations"`                   // float
+	TotalReservedNormalizedUnits  string            `csv:"reservation/TotalReservedNormalizedUnits" json:"totalReservedNormalizedUnits"`   // float
+	TotalReservedUnits            string            `csv:"reservation/TotalReservedUnits" json:"totalReservedUnits"`                       // float
+	UnusedNormalizedUnitQuantity  string            `csv:"reservation/UnusedNormalizedUnitQuantity" json:"unusedNormalizedUnitQuantity"`   // float
+	UnusedQuantity                string            `csv:"reservation/UnusedQuantity" json:"unusedQuantity"`                               // float
+	EffectiveCost                 string            `csv:"reservation/EffectiveCost" json:"effectiveCost"`                                 //float
+	BillType                      string            `csv:"bill/BillType" json:"billType"`
+	Any                           map[string]string `csv:",any"                         json:"-"`
+	Tags                          []LineItemTags    `csv:"-"                            json:"tags,omitempty"`
 }
 
 type LineItemTags struct {

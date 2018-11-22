@@ -19,9 +19,9 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
+	"regexp"
 	"sync"
 	"time"
-	"regexp"
 
 	"github.com/trackit/jsonlog"
 
@@ -43,17 +43,17 @@ type (
 
 	// Instance contains the information of an EC2 instance
 	Instance struct {
-		Id                  string              `json:"id"`
-		Region              string              `json:"region"`
-		State               string              `json:"state"`
-		Purchasing          string              `json:"purchasing"`
-		KeyPair             string              `json:"keyPair"`
-		Type                string              `json:"type"`
-		Tags                []Tag               `json:"tags"`
-		Costs               map[string]float64  `json:"costs"`
-		Stats               Stats               `json:"stats"`
-		NormalizationFactor float64             `json:"normalizationFactor"`
-		Family              string              `json:"family"`
+		Id                  string             `json:"id"`
+		Region              string             `json:"region"`
+		State               string             `json:"state"`
+		Purchasing          string             `json:"purchasing"`
+		KeyPair             string             `json:"keyPair"`
+		Type                string             `json:"type"`
+		Tags                []Tag              `json:"tags"`
+		Costs               map[string]float64 `json:"costs"`
+		Stats               Stats              `json:"stats"`
+		NormalizationFactor float64            `json:"normalizationFactor"`
+		Family              string             `json:"family"`
 	}
 
 	// Stats contains statistics of an instance get on CloudWatch
@@ -192,6 +192,6 @@ func familyNormalizeFactor(instanceType string) (string, float64) {
 	if len(matchs) == 3 {
 		return matchs[1], normalizationFactor[matchs[2]]
 	} else {
-		return "unkown", 0
+		return "unknown", 0
 	}
 }

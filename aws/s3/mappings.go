@@ -46,96 +46,139 @@ const TemplateLineItem = `
 	"mappings": {
 		"lineitem": {
 			"properties": {
-				"billRepositoryId": {
-					"type": "integer"
-				},
-				"lineItemId": {
-					"type": "keyword",
-					"norms": false
-				},
-				"timeInterval": {
-					"type": "keyword",
-					"norms": false
-				},
-				"invoiceId": {
-					"type": "keyword",
-					"norms": false
-				},
-				"usageAccountId": {
-					"type": "keyword",
-					"norms": false
-				},
-				"lineItemType": {
-					"type": "keyword",
-					"norms": false
-				},
-				"productCode": {
-					"type": "keyword",
-					"norms": false
-				},
-				"usageType": {
-					"type": "keyword",
-					"norms": false
-				},
-				"operation": {
-					"type": "keyword",
-					"norms": false
-				},
-				"availabilityZone": {
-					"type": "keyword",
-					"norms": false
-				},
-				"normalizationFactor": {
-					"type": "keyword",
-					"norms": false
-				},
-				"region": {
-					"type": "keyword",
-					"norms": false
-				},
-				"resourceId": {
-					"type": "keyword",
-					"norms": false
-				},
-				"usageAmount": {
-					"type": "float",
-					"index": false
-				},
-				"serviceCode": {
-					"type": "keyword",
-					"norms": false
-				},
-				"currencyCode": {
-					"type": "keyword",
-					"norms": false
-				},
-				"unblendedCost": {
-					"type": "float",
-					"index": false
-				},
-				"taxType": {
-					"type": "keyword",
-					"norms": false
-				},
-				"usageStartDate": {
-					"type": "date"
-				},
-				"usageEndDate": {
-					"type": "date"
-				},
-				"tags": {
-					"type": "nested",
-					"properties": {
-						"key": {
-							"type": "keyword",
-							"norms": false
-						},
-						"tag": {
-							"type": "keyword",
-							"norms": false
-						}
-					}
-				}
+          "availabilityZone": {
+            "type": "keyword",
+						"norms": false
+          },
+          "billRepositoryId": {
+            "type": "integer"
+          },
+          "currencyCode": {
+            "type": "keyword",
+						"norms": false
+          },
+          "effectiveCost": {
+            "type": "float",
+            "index": false
+          },
+          "instanceTypeFamily": {
+            "type": "keyword",
+						"norms": false
+          },
+          "invoiceId": {
+            "type": "keyword",
+						"norms": false
+          },
+          "lineItemId": {
+            "type": "keyword",
+						"norms": false
+          },
+          "lineItemType": {
+            "type": "keyword",
+						"norms": false
+          },
+          "normalizationFactor": {
+            "type": "float",
+            "index": false
+          },
+          "normalizedUnitsPerReservation": {
+            "type": "float",
+            "index": false
+          },
+          "normalizedUsageAmount": {
+            "type": "float",
+            "index": false
+          },
+          "numberOfReservations": {
+            "type": "float",
+            "index": false
+          },
+					"billType": {
+						"type": "keyword",
+						"index": false
+					},
+          "operation": {
+            "type": "keyword",
+						"norms": false
+          },
+          "productCode": {
+            "type": "keyword",
+						"norms": false
+          },
+          "region": {
+            "type": "keyword",
+						"norms": false
+          },
+          "resourceId": {
+            "type": "keyword",
+						"norms": false
+          },
+          "serviceCode": {
+            "type": "keyword",
+						"norms": false
+          },
+          "tags": {
+            "type": "nested",
+            "properties": {
+              "key": {
+                "type": "keyword",
+								"norms": false
+              },
+              "tag": {
+                "type": "keyword",
+								"norms": false
+              }
+            }
+          },
+          "taxType": {
+            "type": "keyword",
+						"norms": false
+          },
+          "term": {
+            "type": "keyword",
+						"norms": false
+          },
+          "timeInterval": {
+            "type": "keyword",
+						"norms": false
+          },
+          "totalReservedNormalizedUnits": {
+            "type": "float",
+            "index": false
+          },
+          "totalReservedUnits": {
+            "type": "float",
+            "index": false
+          },
+          "unblendedCost": {
+            "type": "float",
+            "index": false
+          },
+          "unusedNormalizedUnitQuantity": {
+            "type": "float",
+            "index": false
+          },
+          "unusedQuantity": {
+            "type": "float",
+            "index": false
+          },
+          "usageAccountId": {
+            "type": "keyword"
+          },
+          "usageAmount": {
+            "type": "float",
+            "index": false
+          },
+          "usageEndDate": {
+            "type": "date"
+          },
+          "usageStartDate": {
+            "type": "date"
+          },
+          "usageType": {
+            "type": "keyword",
+						"norms": false
+          }
 			},
 			"_all": {
 				"enabled": false
