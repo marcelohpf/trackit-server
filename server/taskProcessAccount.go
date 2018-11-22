@@ -17,13 +17,14 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
+	//"errors"
 	"flag"
-	"strconv"
+	//"strconv"
 	"time"
 
 	"github.com/trackit/jsonlog"
 	"github.com/trackit/trackit-server/aws"
+	"github.com/trackit/trackit-server/aws/ri"
 	"github.com/trackit/trackit-server/aws/usageReports/ec2"
 	"github.com/trackit/trackit-server/aws/usageReports/history"
 	"github.com/trackit/trackit-server/aws/usageReports/rds"
@@ -37,13 +38,16 @@ func taskProcessAccount(ctx context.Context) error {
 	logger.Debug("Running task 'process-account'.", map[string]interface{}{
 		"args": args,
 	})
-	if len(args) != 1 {
-		return errors.New("taskProcessAccount requires an integer argument")
-	} else if aaId, err := strconv.Atoi(args[0]); err != nil {
-		return err
-	} else {
-		return ingestDataForAccount(ctx, aaId)
-	}
+	/*
+		if len(args) != 1 {
+			return errors.New("taskProcessAccount requires an integer argument.")
+		} else if aaId, err := strconv.Atoi(args[0]); err != nil {
+			return err
+		} else {
+			return ingestDataForAccount(ctx, aaId)
+		}
+	*/
+	return ingestDataForAccount(ctx, 1)
 }
 
 // ingestDataForAccount ingests the AWS api data for an AwsAccount.
@@ -68,6 +72,10 @@ func ingestDataForAccount(ctx context.Context, aaId int) (err error) {
 		rdsErr := processAccountRDS(ctx, aa)
 		ec2Err := processAccountEC2(ctx, aa)
 		historyErr := processAccountHistory(ctx, aa)
+		ec2riErr := processAccountEC2Reserves(ctx, aa)
+		if ec2riErr != nil {
+			logger.Error("Failed to process EC2 Reserved Instances", ec2riErr.Error())
+		}
 		updateAccountProcessingCompletion(ctx, aaId, db.Db, updateId, nil, rdsErr, ec2Err, historyErr)
 	}
 	if err != nil {
@@ -145,7 +153,20 @@ func processAccountRDS(ctx context.Context, aa aws.AwsAccount) error {
 	return err
 }
 
-// processAccountEC2 processes all the EC2 data for an AwsAccount
+// processAccountEC2Reserves processes the EC2 reserved data for an AwsAccount
+func processAccountEC2Reserves(ctx context.Context, aa aws.AwsAccount) error {
+	err := ri.FetchReservedInstances(ctx, aa)
+	if err != nil {
+		logger := jsonlog.LoggerFromContextOrDefault(ctx)
+		logger.Error("Failed to ingest EC2 reserved instances", map[string]interface{}{
+			"awsAccountId": aa.Id,
+			"error":        err.Error(),
+		})
+	}
+	return err
+}
+
+// processAccountEC2 processes the EC2 instances data for an AwsAccount
 func processAccountEC2(ctx context.Context, aa aws.AwsAccount) error {
 	err := ec2.FetchDailyInstancesStats(ctx, aa)
 	if err != nil {
