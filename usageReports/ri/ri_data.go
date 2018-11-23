@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/trackit/jsonlog"
 
@@ -17,14 +16,6 @@ import (
 	"github.com/trackit/trackit-server/users"
 	"gopkg.in/olivere/elastic.v5"
 )
-
-type RiQueryParams struct {
-	accountList []string
-	begin       time.Time
-	end         time.Time
-	state       bool
-	indexList   []string
-}
 
 const maxAggregationSize = 0x7FFFFFFF
 
@@ -74,7 +65,7 @@ func getElasticSearchRiParams(params RiQueryParams, client *elastic.Client, inde
 	query := elastic.NewBoolQuery()
 	query = query.Filter(elastic.NewRangeQuery("startDate").From(params.begin).To(params.end))
 
-	if params.state {
+	if params.state != "all" {
 		query = query.Filter(elastic.NewTermsQuery("state", params.state))
 	}
 

@@ -10,14 +10,22 @@ import (
 	"github.com/trackit/trackit-server/users"
 )
 
+type RiQueryParams struct {
+	accountList []string
+	begin       time.Time
+	end         time.Time
+	state       string
+	indexList   []string
+}
+
 var riQueryArgs = []routes.QueryArg{
 	routes.AwsAccountsOptionalQueryArg,
 	routes.DateBeginQueryArg,
 	routes.DateEndQueryArg,
 	routes.QueryArg{
 		Name:        "state",
-		Type:        routes.QueryArgBool{},
-		Description: "Select active and retired reservations. If you ommit this parameters, it will return both.",
+		Type:        routes.QueryArgString{},
+		Description: "Select `active` and `retired` reservations. If you ommit this parameters, it will return both.",
 		Optional:    true,
 	},
 }
@@ -43,13 +51,13 @@ func getReservedInstances(request *http.Request, a routes.Arguments) (int, inter
 		accountList: []string{},
 		begin:       a[routes.DateBeginQueryArg].(time.Time),
 		end:         a[routes.DateEndQueryArg].(time.Time),
-		state:       false,
+		state:       "all",
 	}
 	if a[routes.AwsAccountsOptionalQueryArg] != nil {
 		parsedParams.accountList = a[routes.AwsAccountIdsOptionalQueryArg].([]string)
 	}
 	if a[riQueryArgs[3]] != nil {
-		parsedParams.state = a[riQueryArgs[3]].(bool)
+		parsedParams.state = a[riQueryArgs[3]].(string)
 	}
 	returnCode, report, err := GetEC2ReservedInstances(request.Context(), parsedParams, user, tx)
 	if err != nil {
