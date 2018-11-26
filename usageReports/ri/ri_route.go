@@ -10,12 +10,25 @@ import (
 	"github.com/trackit/trackit-server/users"
 )
 
+type RiReportQueryParams struct {
+	accountList []string
+	begin       time.Time
+	end         time.Time
+	indexList   []string
+}
+
 type RiQueryParams struct {
 	accountList []string
 	begin       time.Time
 	end         time.Time
 	state       string
 	indexList   []string
+}
+
+var riReportQueryArgs = []routes.QueryArg{
+	routes.AwsAccountsOptionalQueryArg,
+	routes.DateBeginQueryArg,
+	routes.DateEndQueryArg,
 }
 
 var riQueryArgs = []routes.QueryArg{
@@ -42,6 +55,17 @@ func init() {
 			},
 		),
 	}.H().Register("/ri")
+	routes.MethodMuxer{
+		http.MethodGet: routes.H(getReportDiscountInstances).With(
+			db.RequestTransaction{Db: db.Db},
+			users.RequireAuthenticatedUser{users.ViewerAsParent},
+			routes.QueryArgs(riReportQueryArgs),
+			routes.Documentation{
+				Summary:     "get the list usage and discounted EC2 instances",
+				Description: "Responds with the list of usage and  instances based on the queryparams passed to it",
+			},
+		),
+	}.H().Register("/ri/discount")
 }
 
 func getReservedInstances(request *http.Request, a routes.Arguments) (int, interface{}) {
@@ -56,10 +80,26 @@ func getReservedInstances(request *http.Request, a routes.Arguments) (int, inter
 	if a[routes.AwsAccountsOptionalQueryArg] != nil {
 		parsedParams.accountList = a[routes.AwsAccountIdsOptionalQueryArg].([]string)
 	}
-	if a[riQueryArgs[3]] != nil {
-		parsedParams.state = a[riQueryArgs[3]].(string)
-	}
 	returnCode, report, err := GetEC2ReservedInstances(request.Context(), parsedParams, user, tx)
+	if err != nil {
+		return returnCode, err
+	} else {
+		return returnCode, report
+	}
+}
+
+func getReportDiscountInstances(request *http.Request, a routes.Arguments) (int, interface{}) {
+	user := a[users.AuthenticatedUser].(users.User)
+	tx := a[db.Transaction].(*sql.Tx)
+	parsedParams := RiReportQueryParams{
+		accountList: []string{},
+		begin:       a[routes.DateBeginQueryArg].(time.Time),
+		end:         a[routes.DateEndQueryArg].(time.Time),
+	}
+	if a[routes.AwsAccountsOptionalQueryArg] != nil {
+		parsedParams.accountList = a[routes.AwsAccountIdsOptionalQueryArg].([]string)
+	}
+	returnCode, report, err := GetRC2ReportReservedInstances(request.Context(), parsedParams, user, tx)
 	if err != nil {
 		return returnCode, err
 	} else {

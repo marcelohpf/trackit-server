@@ -14,26 +14,35 @@ import (
 
 const ReserveInstanceSessionName = "reserved-instances"
 
-type ReservedInstance struct {
-	ReservedInstancesId string    `json:"reservedInstancesId"`
-	OfferingType        string    `json:"offeringType"`
-	EndDate             time.Time `json:"endDate"`
-	Scope               string    `json:"scope"`
-	UsagePrice          float64   `json:"usagePrice"`
-	StartDate           time.Time `json:"startDate"`
-	State               string    `json:"state"`
-	ProductDescription  string    `json:"productDescription"`
-	CurrencyCode        string    `json:"currencyCode"`
-	Duration            int64     `json:"duration"`
-	InstanceType        string    `json:"instanceType"`
-	InstanceCount       int64     `json:"instanceCount"`
-	AvailabilityZone    string    `json:"availabilityZone"`
-	FixedPrice          float64   `json:"fixedPrice"`
-	OfferingClass       string    `json:"offeringClass"`
-	Family              string    `json:"family"`
-	NormalizationFactor float64   `json:"normalizationFactor"`
-	Region              string    `json:"region"`
-}
+type (
+	ReservedInstance struct {
+		ReservedInstancesId string    `json:"reservedInstancesId"`
+		OfferingType        string    `json:"offeringType"`
+		EndDate             time.Time `json:"endDate"`
+		Scope               string    `json:"scope"`
+		UsagePrice          float64   `json:"usagePrice"`
+		StartDate           time.Time `json:"startDate"`
+		State               string    `json:"state"`
+		ProductDescription  string    `json:"productDescription"`
+		CurrencyCode        string    `json:"currencyCode"`
+		Duration            int64     `json:"duration"`
+		InstanceType        string    `json:"instanceType"`
+		InstanceCount       int64     `json:"instanceCount"`
+		AvailabilityZone    string    `json:"availabilityZone"`
+		FixedPrice          float64   `json:"fixedPrice"`
+		OfferingClass       string    `json:"offeringClass"`
+		Family              string    `json:"family"`
+		NormalizationFactor float64   `json:"normalizationFactor"`
+		Region              string    `json:"region"`
+	}
+
+	ReservedInstanceReport struct {
+		Type                string  `json:"type"`
+		Family              string  `json:"family"`
+		NormalizationFactor float64 `json:"normalizationFactor"`
+		NormalizedUsage     float64 `json:"normalizedUsage"`
+	}
+)
 
 // importInstancesToEs receive the reserved instances from EC2 and load in
 // ElasticSearch.

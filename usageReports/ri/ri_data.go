@@ -4,14 +4,14 @@ import (
 	"context"
 	// "fmt"
 	"database/sql"
-	"encoding/json"
+	//"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/trackit/jsonlog"
 
 	"github.com/trackit/trackit-server/aws/ri"
-	"github.com/trackit/trackit-server/errors"
+	//"github.com/trackit/trackit-server/errors"
 	"github.com/trackit/trackit-server/es"
 	"github.com/trackit/trackit-server/users"
 	"gopkg.in/olivere/elastic.v5"
@@ -40,13 +40,13 @@ func GetEC2ReservedInstances(ctx context.Context, parsedParams RiQueryParams, us
 // return a http code for execution, and if a error occur, it is returned with a
 // empty result and a HTTP 500 status code
 func makeElasticSearchRiRequest(ctx context.Context, params RiQueryParams) (int, *elastic.SearchResult, error) {
-	l := jsonlog.LoggerFromContextOrDefault(ctx)
 	index := strings.Join(params.indexList, ",")
-	search := getElasticSearchRiParams(
-		params,
-		es.Client,
-		index,
-	)
+	search := getElasticSearchRiParams(params, es.Client, index)
+	return executeElasticSearchQuery(ctx, search, index)
+}
+
+func executeElasticSearchQuery(ctx context.Context, search *elastic.SearchService, index string) (int, *elastic.SearchResult, error) {
+	l := jsonlog.LoggerFromContextOrDefault(ctx)
 	res, err := search.Do(ctx)
 	if err != nil {
 		if elastic.IsNotFound(err) {
@@ -71,28 +71,4 @@ func getElasticSearchRiParams(params RiQueryParams, client *elastic.Client, inde
 
 	search := client.Search().Index(index).Query(query)
 	return search
-}
-
-func prepareResponseRi(ctx context.Context, res *elastic.SearchResult) (int, []ri.ReservedInstance, error) {
-	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	var instances []ri.ReservedInstance
-
-	if res.Hits.TotalHits == 0 {
-		logger.Warning("Query not found any result.", nil)
-		return http.StatusOK, nil, nil
-	}
-
-	for _, instance := range res.Hits.Hits {
-		var response ri.ReservedInstance
-		err := json.Unmarshal(*instance.Source, &response)
-
-		if err != nil {
-			logger.Error("Error while unmarshaling ES RI response", err)
-			return http.StatusInternalServerError, nil, errors.GetErrorMessage(ctx, err)
-		}
-		instances = append(instances, response)
-	}
-
-	//err := json.Unmarshal(res.Hits.Hits.Source, &response)
-	return http.StatusOK, instances, nil
 }
