@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"net/smtp"
+	"strings"
 
 	"github.com/trackit/jsonlog"
 
@@ -33,7 +34,7 @@ type Mail struct {
 	SmtpUser     string
 	SmtpPassword string
 	Sender       string
-	Recipient    string
+	Recipient    []string
 	Subject      string
 	Body         string
 	Mime         string
@@ -43,13 +44,14 @@ type Mail struct {
 // It gets the SMTP information from the config file.
 func SendMail(recipient string, subject, body string, ctx context.Context) error {
 	mime := ""
+	recipients := []string{recipient}
 	mail := Mail{
 		config.SmtpAddress,
 		config.SmtpPort,
 		config.SmtpUser,
 		config.SmtpPassword,
 		config.SmtpSender,
-		recipient,
+		recipients,
 		subject,
 		body,
 		mime,
@@ -57,7 +59,8 @@ func SendMail(recipient string, subject, body string, ctx context.Context) error
 	return mail.Send(ctx)
 }
 
-func SendHTMLMail(recipient string, subject, body string, ctx context.Context) error {
+// SendHTMLMail add a mimetype in mail to client format it as HTML message
+func SendHTMLMail(recipient []string, subject, body string, ctx context.Context) error {
 	mail := Mail{
 		SmtpAddress:  config.SmtpAddress,
 		SmtpPort:     config.SmtpPort,
@@ -75,7 +78,9 @@ func SendHTMLMail(recipient string, subject, body string, ctx context.Context) e
 func (m Mail) buildMessage() []byte {
 	message := ""
 	message += fmt.Sprintf("From: %s\r\n", m.Sender)
-	message += fmt.Sprintf("To: %s\r\n", m.Recipient)
+	if len(m.Recipient) > 0 {
+		message += fmt.Sprintf("To: %s\r\n", strings.Join(m.Recipient, ";"))
+	}
 	message += fmt.Sprintf("Subject: %s\r\n", m.Subject)
 	message += m.Mime
 	message += "\r\n" + m.Body
@@ -131,8 +136,10 @@ func (m Mail) setAddresses(client *smtp.Client) error {
 	if err := client.Mail(m.Sender); err != nil {
 		return err
 	}
-	if err := client.Rcpt(m.Recipient); err != nil {
-		return err
+	for _, recipient := range m.Recipient {
+		if err := client.Rcpt(recipient); err != nil {
+			return err
+		}
 	}
 	return nil
 }

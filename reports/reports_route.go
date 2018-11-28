@@ -21,6 +21,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -29,9 +30,44 @@ import (
 	"github.com/trackit/trackit-server/awsSession"
 	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/db"
+	"github.com/trackit/trackit-server/mail"
 	"github.com/trackit/trackit-server/models"
 	"github.com/trackit/trackit-server/routes"
 	"github.com/trackit/trackit-server/users"
+
+	"github.com/trackit/trackit-server/costs"
+	"github.com/trackit/trackit-server/costs/tags"
+	ts3 "github.com/trackit/trackit-server/s3/costs"
+	"github.com/trackit/trackit-server/usageReports/ec2"
+	"github.com/trackit/trackit-server/usageReports/ri"
+)
+
+var reportMailArgs = []routes.QueryArg{
+	routes.AwsAccountsOptionalQueryArg,
+	routes.DateBeginQueryArg,
+	routes.DateEndQueryArg,
+	routes.QueryArg{
+		Name:        "targets",
+		Type:        routes.QueryArgStringSlice{},
+		Description: "Targets of mail comma separed",
+		Optional:    false,
+	},
+}
+
+type (
+	Report struct {
+		content []byte
+		name    string
+	}
+
+	ReportEmailQueryParams struct {
+		accountList []string
+		begin       time.Time
+		end         time.Time
+		indexList   []string
+		targetList  []string
+		state       string
+	}
 )
 
 func init() {
@@ -60,6 +96,18 @@ func init() {
 			routes.QueryArgs{routes.FileNameQueryArg},
 		),
 	}.H().Register("/report")
+
+	routes.MethodMuxer{
+		http.MethodPost: routes.H(sendReportMail).With(
+			db.RequestTransaction{Db: db.Db},
+			users.RequireAuthenticatedUser{users.ViewerAsParent},
+			routes.Documentation{
+				Summary:     "send a report mail",
+				Description: "Prepare and send a compact report with the main and necessary information to overview of aws cost",
+			},
+			routes.QueryArgs(reportMailArgs),
+		),
+	}.H().Register("/report/mail")
 }
 
 func isUserAccount(tx *sql.Tx, user users.User, aa int) (bool, error) {
@@ -115,11 +163,6 @@ func getAwsReports(request *http.Request, a routes.Arguments) (int, interface{})
 	return http.StatusOK, objects
 }
 
-type Report struct {
-	content []byte
-	name    string
-}
-
 func (r Report) GetFileContent() []byte {
 	return r.content
 }
@@ -153,4 +196,97 @@ func getAwsReportsDownload(request *http.Request, a routes.Arguments) (int, inte
 		return http.StatusNotFound, fmt.Errorf("The specified key does not exist")
 	}
 	return http.StatusOK, Report{buff.Bytes(), reportName}
+}
+
+// sendReportMail collect data from endpoints and format a e-mail to send to a target list
+func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}) {
+	user := a[users.AuthenticatedUser].(users.User)
+	tx := a[db.Transaction].(*sql.Tx)
+	parsedParams := ReportEmailQueryParams{
+		begin:       a[routes.DateBeginQueryArg].(time.Time),
+		end:         a[routes.DateEndQueryArg].(time.Time),
+		targetList:  a[reportMailArgs[3]].([]string),
+		accountList: []string{},
+	}
+
+	ctx := request.Context()
+
+	if a[routes.AwsAccountsOptionalQueryArg] != nil {
+		parsedParams.accountList = a[routes.AwsAccountIdsOptionalQueryArg].([]string)
+	}
+
+	// fetch reserved instances
+	ec2RiParams := ri.GetRiParams(parsedParams.begin, parsedParams.end, parsedParams.accountList, "active")
+
+	returnCode, ec2Ri, err := ri.GetEC2ReservedInstances(ctx, ec2RiParams, user, tx)
+	if err != nil {
+		return returnCode, err
+	}
+
+	// fetch reserved instances report
+	riReportParams := ri.GetRiReportParams(parsedParams.begin, parsedParams.end, parsedParams.accountList)
+
+	returnCode, ec2RiReport, err := ri.GetRC2ReportReservedInstances(ctx, riReportParams, user, tx)
+	if err != nil {
+		return returnCode, err
+	}
+
+	// fetch Unused EC2 instances
+	ec2UnusedParams := ec2.Ec2UnusedQueryParams{
+		AccountList: parsedParams.accountList,
+		Date:        parsedParams.begin,
+		Count:       -1,
+	}
+
+	returnCode, unusedEc2, err := ec2.GetEc2UnusedData(ctx, ec2UnusedParams, user, tx)
+	if err != nil {
+		return returnCode, err
+	}
+
+	// fetch costs
+	costParams := costs.GetEsQueryParams(parsedParams.begin, parsedParams.end, []string{"product"}, parsedParams.accountList)
+	returnCode, esCost, err := costs.GetCostData(ctx, costParams, user, tx)
+
+	if err != nil {
+		return returnCode, err
+	}
+
+	// fetch tags
+	tagsParams := tags.TagsValuesQueryParams{
+		AccountList: parsedParams.accountList,
+		DateBegin:   parsedParams.begin,
+		DateEnd:     parsedParams.end.Add(time.Hour*time.Duration(23) + time.Minute*time.Duration(59) + time.Second*time.Duration(59)),
+		TagsKeys:    []string{"Application", "Owner"},
+		Group:       true,
+		By:          "product",
+	}
+
+	returnCode, tagsGroup, err := tags.GetGroupedTags(ctx, tagsParams, user, tx)
+
+	if err != nil {
+		return returnCode, err
+	}
+
+	// fetch S3
+	s3Params := ts3.GetEsQueryParams(parsedParams.begin, parsedParams.end, parsedParams.accountList)
+
+	returnCode, s3Cost, err := ts3.GetS3CostData(ctx, s3Params, user, tx)
+
+	if err != nil {
+		return returnCode, err
+	}
+
+	content, err := formatEmail(ec2RiReport, ec2Ri, s3Cost, unusedEc2, tagsGroup, esCost, parsedParams.begin, parsedParams.end)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	// sending mail
+	err = mail.SendHTMLMail(parsedParams.targetList, "Cost Report", content, ctx)
+	if err != nil {
+		return http.StatusInternalServerError, err
+
+	}
+
+	return http.StatusOK, content
 }
