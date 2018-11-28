@@ -47,7 +47,9 @@ func getElasticSearchReportParams(params RiReportQueryParams, client *elastic.Cl
 	search.Aggregation("usage", elastic.NewTermsAggregation().Field("lineItemType").Size(maxAggregationSize).
 		SubAggregation("family", elastic.NewTermsAggregation().Field("instanceTypeFamily").Size(maxAggregationSize).
 			SubAggregation("factor", elastic.NewTermsAggregation().Field("normalizationFactor").Size(maxAggregationSize).
-				SubAggregation("usageAmount", elastic.NewSumAggregation().Field("normalizedUsageAmount")))))
+				SubAggregation("usageAmount", elastic.NewSumAggregation().Field("normalizedUsageAmount")).
+				SubAggregation("usageCost", elastic.NewSumAggregation().Field("unblendedCost")).
+				SubAggregation("discountCost", elastic.NewSumAggregation().Field("effectiveCost")))))
 
 	return search
 }

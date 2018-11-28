@@ -106,3 +106,20 @@ func getReportDiscountInstances(request *http.Request, a routes.Arguments) (int,
 		return returnCode, report
 	}
 }
+
+func GetRiReportParams(begin time.Time, end time.Time, accountList []string) RiReportQueryParams {
+	return RiReportQueryParams{
+		begin:       begin,
+		end:         end,
+		accountList: accountList,
+	}
+}
+
+func GetRiParams(begin time.Time, end time.Time, accountList []string, state string) RiQueryParams {
+	return RiQueryParams{
+		begin:       begin,
+		end:         end,
+		accountList: accountList,
+		state:       state,
+	}
+}

@@ -103,6 +103,7 @@ type (
 		Costs               map[string]float64 `json:"costs"`
 		Stats               Stats              `json:"stats"`
 		NormalizationFactor float64            `json:"normalizationFactor"`
+		Family              string             `json:"family"`
 	}
 
 	// Stats contains statistics of an instance get on CloudWatch
@@ -156,6 +157,7 @@ func getEc2InstanceReportResponse(oldInstance ec2.InstanceReport) InstanceReport
 			Tags:                tags,
 			Costs:               oldInstance.Instance.Costs,
 			NormalizationFactor: oldInstance.Instance.NormalizationFactor,
+			Family:              oldInstance.Instance.Family,
 			Stats: Stats{
 				Cpu: Cpu{
 					Average: oldInstance.Instance.Stats.Cpu.Average,
@@ -286,8 +288,8 @@ func prepareResponseEc2Unused(params Ec2UnusedQueryParams, instances []InstanceR
 		}
 		return cost1 > cost2
 	})
-	if params.count >= 0 && params.count <= len(unusedInstances) {
-		return http.StatusOK, unusedInstances[0:params.count], nil
+	if params.Count >= 0 && params.Count <= len(unusedInstances) {
+		return http.StatusOK, unusedInstances[0:params.Count], nil
 	}
 	return http.StatusOK, unusedInstances, nil
 }

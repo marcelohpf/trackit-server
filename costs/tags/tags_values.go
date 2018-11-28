@@ -89,7 +89,7 @@ type (
 )
 
 // getTagsValuesWithParsedParams will parse the data from ElasticSearch and return it
-func getTagsValuesWithParsedParams(ctx context.Context, params tagsValuesQueryParams) (int, interface{}) {
+func getTagsValuesWithParsedParams(ctx context.Context, params TagsValuesQueryParams) (int, interface{}) {
 	response := TagsValuesResponse{}
 	l := jsonlog.LoggerFromContextOrDefault(ctx)
 	var typedDocument esTagsValuesResult
@@ -129,7 +129,7 @@ func getTagsValuesWithParsedParams(ctx context.Context, params tagsValuesQueryPa
 
 // getGroupedTagsWithParsedParams will parse the data from ElasticSearch and
 // return it grouped by tags
-func getGroupedTagsWithParsedParams(ctx context.Context, params tagsValuesQueryParams) (int, interface{}) {
+func getGroupedTagsWithParsedParams(ctx context.Context, params TagsValuesQueryParams) (int, interface{}) {
 	response := TagsValuesResponse{}
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	var typedDocument esGroupTagsValueResult
@@ -171,7 +171,7 @@ func getGroupedTagsWithParsedParams(ctx context.Context, params tagsValuesQueryP
 // the user (e.g if the index does not exists because it was not yet indexed ) the error will
 // be returned, but instead of having a 500 status code, it will return the provided status code
 // with empty data
-func makeElasticSearchRequestForTagsValues(ctx context.Context, params tagsValuesQueryParams, client *elastic.Client) (*elastic.SearchResult, int, error) {
+func makeElasticSearchRequestForTagsValues(ctx context.Context, params TagsValuesQueryParams, client *elastic.Client) (*elastic.SearchResult, int, error) {
 	// l := jsonlog.LoggerFromContextOrDefault(ctx)
 	filter := getTagsValuesFilter(params.By)
 	query := getTagsValuesQuery(params)
@@ -194,7 +194,7 @@ func makeElasticSearchRequestForTagsValues(ctx context.Context, params tagsValue
 }
 
 // makeElasticSearchRequestForGroupTagsValues query in ElasticSearch for grouped tags
-func makeElasticSearchRequestForGroupTagsValues(ctx context.Context, params tagsValuesQueryParams, client *elastic.Client) (*elastic.SearchResult, int, error) {
+func makeElasticSearchRequestForGroupTagsValues(ctx context.Context, params TagsValuesQueryParams, client *elastic.Client) (*elastic.SearchResult, int, error) {
 	l := jsonlog.LoggerFromContextOrDefault(ctx)
 	filter := getTagsValuesFilter(params.By)
 	query := getTagsValuesQuery(params)
@@ -257,7 +257,7 @@ func runQueryElasticSearch(ctx context.Context, index string, search *elastic.Se
 }
 
 // getTagsValuesQuery will generate a query for the ElasticSearch based on params
-func getTagsValuesQuery(params tagsValuesQueryParams) *elastic.BoolQuery {
+func getTagsValuesQuery(params TagsValuesQueryParams) *elastic.BoolQuery {
 	query := elastic.NewBoolQuery()
 	if len(params.AccountList) > 0 {
 		query = query.Filter(createQueryAccountFilter(params.AccountList))
@@ -299,7 +299,7 @@ func getTagsValuesFilter(filter string) FilterType {
 
 // getGroupTags parser the params and return a parameters to run in
 // ElasticSearch query script
-func getGroupTags(params tagsValuesQueryParams) (map[string]interface{}, error) {
+func getGroupTags(params TagsValuesQueryParams) (map[string]interface{}, error) {
 	if len(params.TagsKeys) == 0 {
 		return nil, go_errors.New("Can't perform a query without tags to group")
 	}

@@ -25,6 +25,12 @@ type (
 								Usage struct {
 									Value float64 `json:"value"`
 								} `json:"usageAmount"`
+								UsageCost struct {
+									Value float64 `json:"value"`
+								} `json:"usageCost"`
+								DiscountCost struct {
+									Value float64 `json:"value"`
+								} `json:"discountCost"`
 							} `json:"buckets"`
 						} `json:"factor"`
 					} `json:"buckets"`
@@ -77,11 +83,18 @@ func prepareResponseRiResult(ctx context.Context, res *elastic.SearchResult) (in
 		var instances []ri.ReservedInstanceReport
 		for _, family := range usage.Family.Buckets {
 			for _, usageFactor := range family.Factor.Buckets {
+				cost := 0.0
+				if usage.Key == "Usage" {
+					cost = usageFactor.UsageCost.Value
+				} else if usage.Key == "DiscountedUsage" {
+					cost = usageFactor.DiscountCost.Value
+				}
 				instances = append(instances, ri.ReservedInstanceReport{
 					Type:                usage.Key,
 					Family:              family.Key,
 					NormalizationFactor: usageFactor.Key,
 					NormalizedUsage:     usageFactor.Usage.Value,
+					Cost:                cost,
 				})
 			}
 		}

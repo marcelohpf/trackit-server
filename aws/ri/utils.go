@@ -41,6 +41,7 @@ type (
 		Family              string  `json:"family"`
 		NormalizationFactor float64 `json:"normalizationFactor"`
 		NormalizedUsage     float64 `json:"normalizedUsage"`
+		Cost                float64 `json:"cost"`
 	}
 )
 

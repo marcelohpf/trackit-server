@@ -108,7 +108,7 @@ func makeElasticSearchEc2MonthlyRequest(ctx context.Context, parsedParams Ec2Que
 			return nil, http.StatusOK, errors.GetErrorMessage(ctx, err)
 		} else if err.(*elastic.Error).Details.Type == "search_phase_execution_exception" {
 			l.Error("Error while getting data from ES", map[string]interface{}{
-				"type": fmt.Sprintf("%T", err),
+				"type":  fmt.Sprintf("%T", err),
 				"error": err,
 			})
 		} else {
@@ -175,7 +175,7 @@ func GetEc2Data(ctx context.Context, parsedParams Ec2QueryParams, user users.Use
 
 // GetEc2UnusedData gets EC2 reports and parse them based on query params to have an array of unused instances
 func GetEc2UnusedData(ctx context.Context, params Ec2UnusedQueryParams, user users.User, tx *sql.Tx) (int, []InstanceReport, error) {
-	returnCode, instances, err := GetEc2Data(ctx, Ec2QueryParams{params.accountList, nil, params.date}, user, tx)
+	returnCode, instances, err := GetEc2Data(ctx, Ec2QueryParams{params.AccountList, nil, params.Date}, user, tx)
 	if err != nil {
 		return returnCode, nil, err
 	}

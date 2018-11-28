@@ -47,8 +47,8 @@ var simpleCriterionMap = map[string]bool{
 	"availabilityzone": true,
 }
 
-// esQueryParams will store the parsed query params
-type esQueryParams struct {
+// EsQueryParams will store the parsed query params
+type EsQueryParams struct {
 	dateBegin         time.Time
 	dateEnd           time.Time
 	accountList       []string
@@ -89,7 +89,7 @@ func init() {
 // correct format : 'tag:*' (with no more than one ':')
 // Right now the tags are not enabled and will generate an error if they are
 // used because they are not yet implemented in the new ElasticSearch mapping
-func validateCriteriaParam(parsedParams esQueryParams) error {
+func validateCriteriaParam(parsedParams EsQueryParams) error {
 	for _, criterion := range parsedParams.aggregationParams {
 		if !simpleCriterionMap[criterion] {
 			if len(criterion) >= 5 && criterion[:4] == "tag:" && strings.Count(criterion, ":") == 1 {
@@ -107,7 +107,7 @@ func validateCriteriaParam(parsedParams esQueryParams) error {
 // the user (e.g if the index does not exists because it was not yet indexed ) the error will
 // be returned, but instead of having a 500 status code, it will return the provided status code
 // with empy data
-func makeElasticSearchRequestAndParseIt(ctx context.Context, parsedParams esQueryParams) (es.SimplifiedCostsDocument, int, error) {
+func makeElasticSearchRequestAndParseIt(ctx context.Context, parsedParams EsQueryParams) (es.SimplifiedCostsDocument, int, error) {
 	l := jsonlog.LoggerFromContextOrDefault(ctx)
 	index := strings.Join(parsedParams.indexList, ",")
 	searchService := GetElasticSearchParams(
@@ -128,7 +128,7 @@ func makeElasticSearchRequestAndParseIt(ctx context.Context, parsedParams esQuer
 			return es.SimplifiedCostsDocument{}, http.StatusOK, errors.GetErrorMessage(ctx, err)
 		} else if err.(*elastic.Error).Details.Type == "search_phase_execution_exception" {
 			l.Error("Error while getting data from ES", map[string]interface{}{
-				"type": fmt.Sprintf("%T", err),
+				"type":  fmt.Sprintf("%T", err),
 				"error": err,
 			})
 		} else {
@@ -147,7 +147,7 @@ func makeElasticSearchRequestAndParseIt(ctx context.Context, parsedParams esQuer
 // getCostsData returns the cost data based on the query params, in JSON format.
 func getCostData(request *http.Request, a routes.Arguments) (int, interface{}) {
 	user := a[users.AuthenticatedUser].(users.User)
-	parsedParams := esQueryParams{
+	parsedParams := EsQueryParams{
 		accountList:       []string{},
 		dateBegin:         a[costsQueryArgs[1]].(time.Time),
 		dateEnd:           a[costsQueryArgs[2]].(time.Time).Add(time.Hour*time.Duration(23) + time.Minute*time.Duration(59) + time.Second*time.Duration(59)),
@@ -160,19 +160,34 @@ func getCostData(request *http.Request, a routes.Arguments) (int, interface{}) {
 		return http.StatusBadRequest, err
 	}
 	tx := a[db.Transaction].(*sql.Tx)
-	accountsAndIndexes, returnCode, err := es.GetAccountsAndIndexes(parsedParams.accountList, user, tx, s3.IndexPrefixLineItem)
+	returnCode, simplifiedCostDocument, err := GetCostData(request.Context(), parsedParams, user, tx)
+
 	if err != nil {
 		return returnCode, err
 	}
+
+	return http.StatusOK, simplifiedCostDocument.ToJsonable()
+}
+
+func GetCostData(ctx context.Context, parsedParams EsQueryParams, user users.User, tx *sql.Tx) (int, es.SimplifiedCostsDocument, error) {
+	accountsAndIndexes, returnCode, err := es.GetAccountsAndIndexes(parsedParams.accountList, user, tx, s3.IndexPrefixLineItem)
+	if err != nil {
+		return returnCode, es.SimplifiedCostsDocument{}, err
+	}
 	parsedParams.accountList = accountsAndIndexes.Accounts
 	parsedParams.indexList = accountsAndIndexes.Indexes
-	simplifiedCostDocument, returnCode, err := makeElasticSearchRequestAndParseIt(request.Context(), parsedParams)
+	simplifiedCostDocument, returnCode, err := makeElasticSearchRequestAndParseIt(ctx, parsedParams)
 	if err != nil {
-		if returnCode == http.StatusOK {
-			return returnCode, es.SimplifiedCostsDocument{}.ToJsonable()
-		} else {
-			return returnCode, err
-		}
+		return returnCode, es.SimplifiedCostsDocument{}, err
 	}
-	return http.StatusOK, simplifiedCostDocument.ToJsonable()
+	return returnCode, simplifiedCostDocument, err
+}
+
+func GetEsQueryParams(begin time.Time, end time.Time, aggregation, accountList []string) EsQueryParams {
+	return EsQueryParams{
+		accountList:       accountList,
+		dateBegin:         begin,
+		dateEnd:           end.Add(time.Hour*time.Duration(23) + time.Minute*time.Duration(59) + time.Second*time.Duration(59)),
+		aggregationParams: aggregation,
+	}
 }

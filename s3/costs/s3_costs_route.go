@@ -33,8 +33,8 @@ import (
 	"github.com/trackit/trackit-server/users"
 )
 
-// esQueryParams will store the parsed query params
-type esQueryParams struct {
+// EsQueryParams will store the parsed query params
+type EsQueryParams struct {
 	dateBegin   time.Time
 	dateEnd     time.Time
 	accountList []string
@@ -91,7 +91,7 @@ func init() {
 // the user (e.g if the index does not exists because it was not yet indexed ) the error will
 // be returned, but instead of having a 500 status code, it will return the provided status code
 // with empy data
-func makeElasticSearchRequest(ctx context.Context, parsedParams esQueryParams,
+func makeElasticSearchRequest(ctx context.Context, parsedParams EsQueryParams,
 	queryDataType string) (*elastic.SearchResult, int, error) {
 	l := jsonlog.LoggerFromContextOrDefault(ctx)
 	index := strings.Join(parsedParams.indexList, ",")
@@ -126,7 +126,7 @@ func makeElasticSearchRequest(ctx context.Context, parsedParams esQueryParams,
 // getS3CostData returns the s3 cost data based on the query params, in JSON format.
 func getS3CostData(request *http.Request, a routes.Arguments) (int, interface{}) {
 	user := a[users.AuthenticatedUser].(users.User)
-	parsedParams := esQueryParams{
+	parsedParams := EsQueryParams{
 		dateBegin:   a[routes.DateBeginQueryArg].(time.Time),
 		dateEnd:     a[routes.DateEndQueryArg].(time.Time).Add(time.Hour*time.Duration(23) + time.Minute*time.Duration(59) + time.Second*time.Duration(59)),
 		accountList: []string{},
@@ -170,4 +170,50 @@ func getS3CostData(request *http.Request, a routes.Arguments) (int, interface{})
 		return http.StatusInternalServerError, err
 	}
 	return http.StatusOK, res
+}
+
+func GetS3CostData(ctx context.Context, parsedParams EsQueryParams, user users.User, tx *sql.Tx) (int, BucketsInfo, error) {
+
+	accountsAndIndexes, returnCode, err := es.GetAccountsAndIndexes(parsedParams.accountList, user, tx, s3.IndexPrefixLineItem)
+	if err != nil {
+		return returnCode, nil, err
+	}
+	parsedParams.accountList = accountsAndIndexes.Accounts
+	parsedParams.indexList = accountsAndIndexes.Indexes
+	var components = [...]struct {
+		k  string
+		sr *elastic.SearchResult
+	}{
+		{"storage", nil},
+		{"requests", nil},
+		{"bandwidthIn", nil},
+		{"bandwidthOut", nil},
+	}
+	for idx, cpn := range components {
+		cpn.sr, returnCode, err = makeElasticSearchRequest(ctx, parsedParams, cpn.k)
+		if err != nil {
+			return returnCode, nil, err
+		}
+		components[idx] = cpn
+	}
+	res, err := prepareResponse(
+		ctx,
+		components[0].sr,
+		components[1].sr,
+		components[2].sr,
+		components[3].sr,
+	)
+	if err != nil {
+		return http.StatusInternalServerError, nil, err
+	}
+	return http.StatusOK, res.(BucketsInfo), nil
+
+}
+
+func GetEsQueryParams(begin time.Time, end time.Time, accountList []string) EsQueryParams {
+	return EsQueryParams{
+		dateBegin:   begin,
+		dateEnd:     end.Add(time.Hour*time.Duration(23) + time.Minute*time.Duration(59) + time.Second*time.Duration(59)),
+		accountList: accountList,
+	}
 }

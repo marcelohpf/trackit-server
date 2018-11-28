@@ -16,10 +16,10 @@ package mail
 
 import (
 	"context"
-	"net/smtp"
 	"crypto/tls"
 	"fmt"
 	"net"
+	"net/smtp"
 
 	"github.com/trackit/jsonlog"
 
@@ -28,19 +28,21 @@ import (
 
 // Mail contains the data necessary to send a mail.
 type Mail struct {
-	SmtpAddress string
-	SmtpPort string
-	SmtpUser string
+	SmtpAddress  string
+	SmtpPort     string
+	SmtpUser     string
 	SmtpPassword string
-	Sender string
-	Recipient string
-	Subject   string
-	Body      string
+	Sender       string
+	Recipient    string
+	Subject      string
+	Body         string
+	Mime         string
 }
 
 // SendMail is the easiest way to send a mail.
 // It gets the SMTP information from the config file.
 func SendMail(recipient string, subject, body string, ctx context.Context) error {
+	mime := ""
 	mail := Mail{
 		config.SmtpAddress,
 		config.SmtpPort,
@@ -50,6 +52,22 @@ func SendMail(recipient string, subject, body string, ctx context.Context) error
 		recipient,
 		subject,
 		body,
+		mime,
+	}
+	return mail.Send(ctx)
+}
+
+func SendHTMLMail(recipient string, subject, body string, ctx context.Context) error {
+	mail := Mail{
+		SmtpAddress:  config.SmtpAddress,
+		SmtpPort:     config.SmtpPort,
+		SmtpUser:     config.SmtpUser,
+		SmtpPassword: config.SmtpPassword,
+		Sender:       config.SmtpSender,
+		Recipient:    recipient,
+		Subject:      subject,
+		Body:         body,
+		Mime:         "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n",
 	}
 	return mail.Send(ctx)
 }
@@ -59,6 +77,7 @@ func (m Mail) buildMessage() []byte {
 	message += fmt.Sprintf("From: %s\r\n", m.Sender)
 	message += fmt.Sprintf("To: %s\r\n", m.Recipient)
 	message += fmt.Sprintf("Subject: %s\r\n", m.Subject)
+	message += m.Mime
 	message += "\r\n" + m.Body
 	return []byte(message)
 }
@@ -91,7 +110,7 @@ func (m Mail) setAuth(client *smtp.Client) error {
 // from the Mail structure.
 func (m Mail) getSmtpClient(ctx context.Context) (*smtp.Client, error) {
 
-	conn, err := net.Dial("tcp", m.SmtpAddress + ":" + m.SmtpPort)
+	conn, err := net.Dial("tcp", m.SmtpAddress+":"+m.SmtpPort)
 	if err != nil {
 		return nil, err
 	}

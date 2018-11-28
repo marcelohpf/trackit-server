@@ -15,6 +15,7 @@
 package tags
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -77,8 +78,8 @@ var tagsValuesQueryArgs = []routes.QueryArg{
 	},
 }
 
-// tagsValuesQueryParams will store the parsed query params for /tags/values endpoint
-type tagsValuesQueryParams struct {
+// TagsValuesQueryParams will store the parsed query params for /tags/values endpoint
+type TagsValuesQueryParams struct {
 	AccountList []string  `json:"awsAccounts"`
 	IndexList   []string  `json:"indexes"`
 	DateBegin   time.Time `json:"begin"`
@@ -91,7 +92,7 @@ type tagsValuesQueryParams struct {
 // getTagsValues returns tags and their values (cost) based on the query params, in JSON format.
 func getTagsValues(request *http.Request, a routes.Arguments) (int, interface{}) {
 	user := a[users.AuthenticatedUser].(users.User)
-	parsedParams := tagsValuesQueryParams{
+	parsedParams := TagsValuesQueryParams{
 		AccountList: []string{},
 		IndexList:   []string{},
 		DateBegin:   a[tagsValuesQueryArgs[1]].(time.Time),
@@ -120,6 +121,25 @@ func getTagsValues(request *http.Request, a routes.Arguments) (int, interface{})
 		return getGroupedTagsWithParsedParams(request.Context(), parsedParams)
 	}
 	return getTagsValuesWithParsedParams(request.Context(), parsedParams)
+}
+
+func GetGroupedTags(ctx context.Context, parsedParams TagsValuesQueryParams, user users.User, tx *sql.Tx) (int, TagsValuesResponse, error) {
+
+	accountsAndIndexes, returnCode, err := es.GetAccountsAndIndexes(parsedParams.AccountList, user, tx, s3.IndexPrefixLineItem)
+	if err != nil {
+		return returnCode, nil, err
+	}
+	parsedParams.AccountList = accountsAndIndexes.Accounts
+	parsedParams.IndexList = accountsAndIndexes.Indexes
+	if getTagsValuesFilter(parsedParams.By).Filter == "error" {
+		return http.StatusBadRequest, nil, errors.New("Invalid filter: " + parsedParams.By)
+	}
+	returnCode, response := getGroupedTagsWithParsedParams(ctx, parsedParams)
+	if returnCode == http.StatusOK {
+		return returnCode, response.(TagsValuesResponse), nil
+	} else {
+		return returnCode, response.(TagsValuesResponse), errors.New("Failed to obtain tags group")
+	}
 }
 
 // tagsKeysQueryArgs allows to get required queryArgs params for /tags/keys endpoint
