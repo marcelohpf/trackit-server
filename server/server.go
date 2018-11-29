@@ -90,12 +90,15 @@ var sched periodic.Scheduler
 
 func schedulePeriodicTasks() {
 	sched.Register(taskIngestDue, 10*time.Minute, "ingest-due-updates")
+	sched.Register(taskProcessAccount, 10*time.Minute, "process-account")
+	sched.Register(taskIngest, 10*time.Minute, "ingest-update")
 	sched.Start()
 }
 
 func taskServer(ctx context.Context) error {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	initializeHandlers()
+	setupInitialAccount(ctx)
 	if config.Periodics {
 		schedulePeriodicTasks()
 		logger.Info("Scheduled periodic tasks.", nil)
@@ -104,6 +107,20 @@ func taskServer(ctx context.Context) error {
 	err := http.ListenAndServe(config.HttpAddress, nil)
 	logger.Error("Server stopped.", err.Error())
 	return err
+}
+
+// setupInitialAccount create a master account to application and the bill
+// repository
+func setupInitialAccount(ctx context.Context) {
+	logger := jsonlog.LoggerFromContextOrDefault(ctx)
+	if config.MasterEmail != "" && config.Bucket != "" {
+		user, err := taskSetupMasterAccount(ctx)
+		if err != nil {
+			logger.Error("Failed to setup Master Account. ", err.Error())
+		} else {
+			logger.Info("Setup Master Account done.", user)
+		}
+	}
 }
 
 // initializeHandlers sets the HTTP server up with handler functions.
