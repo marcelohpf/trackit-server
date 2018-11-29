@@ -17,9 +17,9 @@ package main
 import (
 	"context"
 	"database/sql"
-	//"errors"
+	"errors"
 	"flag"
-	//"strconv"
+	"strconv"
 	"time"
 
 	"github.com/trackit/jsonlog"
@@ -28,26 +28,30 @@ import (
 	"github.com/trackit/trackit-server/aws/usageReports/ec2"
 	"github.com/trackit/trackit-server/aws/usageReports/history"
 	"github.com/trackit/trackit-server/aws/usageReports/rds"
+	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/db"
+	"github.com/trackit/trackit-server/users"
 )
 
 // taskProcessAccount processes an AwsAccount to retrieve data from the AWS api.
+// Do not pass the Master Trackit Account to run for a specific Aws Account
 func taskProcessAccount(ctx context.Context) error {
 	args := flag.Args()
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	logger.Debug("Running task 'process-account'.", map[string]interface{}{
-		"args": args,
+		"args":         args,
+		"master-email": config.MasterEmail,
 	})
-	/*
-		if len(args) != 1 {
-			return errors.New("taskProcessAccount requires an integer argument.")
-		} else if aaId, err := strconv.Atoi(args[0]); err != nil {
-			return err
-		} else {
-			return ingestDataForAccount(ctx, aaId)
-		}
-	*/
-	return ingestDataForAccount(ctx, 1)
+	if config.MasterEmail != "" {
+		return ingestDataForAccount(ctx, 0)
+	} else if len(args) != 1 {
+		return errors.New("taskProcessAccount requires an integer argument or a Master Trackit Account (master-email).")
+	} else if aaId, err := strconv.Atoi(args[0]); err != nil {
+		return err
+	} else {
+		return ingestDataForAccount(ctx, aaId)
+	}
+	// return ingestDataForAccount(ctx, 1)
 }
 
 // ingestDataForAccount ingests the AWS api data for an AwsAccount.
@@ -66,13 +70,13 @@ func ingestDataForAccount(ctx context.Context, aaId int) (err error) {
 		}
 	}()
 	if tx, err = db.Db.BeginTx(ctx, nil); err != nil {
-	} else if aa, err = aws.GetAwsAccountWithId(aaId, tx); err != nil {
+	} else if aa, err = getAwsAccount(ctx, aaId, tx); err != nil {
 	} else if updateId, err = registerAccountProcessing(db.Db, aa); err != nil {
 	} else {
+		riErr := processAccountEC2Reserves(ctx, aa)
 		rdsErr := processAccountRDS(ctx, aa)
 		ec2Err := processAccountEC2(ctx, aa)
 		historyErr := processAccountHistory(ctx, aa)
-		riErr := processAccountEC2Reserves(ctx, aa)
 		updateAccountProcessingCompletion(ctx, aaId, db.Db, updateId, nil, rdsErr, ec2Err, historyErr, riErr)
 	}
 	if err != nil {
@@ -83,6 +87,24 @@ func ingestDataForAccount(ctx context.Context, aaId int) (err error) {
 		})
 	}
 	return
+}
+
+func getAwsAccount(ctx context.Context, aaId int, tx *sql.Tx) (aws.AwsAccount, error) {
+	var aas []aws.AwsAccount
+	var aa aws.AwsAccount
+	var user users.User
+	var err error
+	if aaId == 0 {
+		if user, err = users.GetUserWithEmail(ctx, tx, config.MasterEmail); err != nil {
+		} else if aas, err = aws.GetAwsAccountsFromUser(user, tx); err != nil || len(aas) == 0 {
+		} else {
+			return aas[0], nil
+		}
+	} else if aa, err = aws.GetAwsAccountWithId(aaId, tx); err != nil {
+	} else {
+		return aa, nil
+	}
+	return aa, err
 }
 
 func registerAccountProcessing(db *sql.DB, aa aws.AwsAccount) (int64, error) {

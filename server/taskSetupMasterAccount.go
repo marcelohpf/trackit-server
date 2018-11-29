@@ -17,9 +17,10 @@ import (
 	"github.com/trackit/trackit-server/users"
 )
 
-func taskSetupMasterAccount(ctx context.Context) (*users.User, error) {
+func taskSetupMasterAccount(ctx context.Context) (err error) {
+	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	var tx *sql.Tx
-	var err error
+	var user users.User
 	defer func() {
 		if tx != nil {
 			if err != nil {
@@ -30,23 +31,27 @@ func taskSetupMasterAccount(ctx context.Context) (*users.User, error) {
 		}
 	}()
 	if tx, err = db.Db.BeginTx(ctx, nil); err != nil {
-		return nil, err
 	} else {
-		if config.MasterEmail != "" {
-			return setupMasterAccount(ctx, tx)
+		if config.MasterEmail == "" || config.Bucket == "" {
+			err = errors.New("A master email wasn't defined in arguments, please rerun with -master-email=<email> -bucket=<bucket-name>")
+			logger.Error("Empty arguments master-email or bucket", err.Error())
+		} else if user, err = setupMasterAccount(ctx, tx); err != nil {
+			logger.Error("Failed to setup Master Account. ", err.Error())
 		} else {
-			return nil, errors.New("A master email wasn't defined in arguments, please rerun with -master-email=<email>")
+			logger.Info("Setup Master Account done.", user)
 		}
 	}
+	return
 }
-func setupMasterAccount(ctx context.Context, tx *sql.Tx) (*users.User, error) {
+
+func setupMasterAccount(ctx context.Context, tx *sql.Tx) (users.User, error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	user, err := users.GetUserWithEmail(ctx, tx, config.MasterEmail)
 	if err == users.ErrUserNotFound {
 		randomPassowrd := generatePassword(config.SizePassword)
 		user, err = users.CreateUserWithPassword(ctx, tx, config.MasterEmail, randomPassowrd, "customerIdentifier")
 		if err != nil {
-			return nil, err
+			return users.User{}, err
 		}
 		// send e-mail with the master account password
 		err = mail.SendMail(
@@ -58,14 +63,14 @@ func setupMasterAccount(ctx context.Context, tx *sql.Tx) (*users.User, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		return users.User{}, err
 	}
 
 	if err = createMasterAwsAccount(user, ctx, tx); err != nil {
-		return nil, err
+		return users.User{}, err
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func createMasterAwsAccount(user users.User, ctx context.Context, tx *sql.Tx) error {

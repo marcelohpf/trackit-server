@@ -29,7 +29,9 @@ import (
 
 	"github.com/trackit/trackit-server/aws"
 	"github.com/trackit/trackit-server/aws/s3"
+	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/db"
+	"github.com/trackit/trackit-server/users"
 )
 
 // taskIngest ingests billing data for a given BillRepository and AwsAccount.
@@ -37,10 +39,13 @@ func taskIngest(ctx context.Context) error {
 	args := flag.Args()
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	logger.Debug("Running task 'ingest'.", map[string]interface{}{
-		"args": args,
+		"args":         args,
+		"master-email": config.MasterEmail,
 	})
-	if len(args) != 2 {
-		return errors.New("taskIngest requires two integer arguments")
+	if config.MasterEmail != "" {
+		return ingestBillingDataForBillRepository(ctx, 0, 0)
+	} else if len(args) != 2 {
+		return errors.New("taskIngest requires two integer arguments or a Master Trackit Account (master-email)")
 	} else if aa, err := strconv.Atoi(args[0]); err != nil {
 		return err
 	} else if br, err := strconv.Atoi(args[1]); err != nil {
@@ -48,6 +53,7 @@ func taskIngest(ctx context.Context) error {
 	} else {
 		return ingestBillingDataForBillRepository(ctx, aa, br)
 	}
+	//return ingestBillingDataForBillRepository(ctx, 1, 1)
 }
 
 // ingestBillingDataForBillRepository ingests the billing data for a
@@ -69,8 +75,7 @@ func ingestBillingDataForBillRepository(ctx context.Context, aaId, brId int) (er
 		}
 	}()
 	if tx, err = db.Db.BeginTx(ctx, nil); err != nil {
-	} else if aa, err = aws.GetAwsAccountWithId(aaId, tx); err != nil {
-	} else if br, err = s3.GetBillRepositoryForAwsAccountById(aa, brId, tx); err != nil {
+	} else if br, err = getBillRespository(ctx, aaId, brId, tx); err != nil {
 	} else if updateId, err = registerUpdate(db.Db, br); err != nil {
 	} else if latestManifest, err = s3.UpdateReport(ctx, aa, br); err != nil {
 		if billError, castok := err.(awserr.Error); castok {
@@ -90,6 +95,30 @@ func ingestBillingDataForBillRepository(ctx context.Context, aaId, brId int) (er
 	}
 	updateCompletion(ctx, aaId, brId, db.Db, updateId, err)
 	return
+}
+
+// getBillRepository search for the bill repository using the AwsAccount and
+// Bill Repository ID or use the Master Trackit Account
+func getBillRespository(ctx context.Context, aaId, brId int, tx *sql.Tx) (s3.BillRepository, error) {
+	var user users.User
+	var aas []aws.AwsAccount
+	var aa aws.AwsAccount
+	var brs []s3.BillRepository
+	var br s3.BillRepository
+	var err error
+	if aaId == 0 || brId == 0 {
+		if user, err = users.GetUserWithEmail(ctx, tx, config.MasterEmail); err != nil {
+		} else if aas, err = aws.GetAwsAccountsFromUser(user, tx); err != nil || len(aas) == 0 {
+		} else if brs, err = s3.GetBillRepositoriesForAwsAccount(aas[0], tx); err != nil || len(brs) == 0 {
+		} else {
+			return brs[0], nil
+		}
+	} else if aa, err = aws.GetAwsAccountWithId(aaId, tx); err != nil {
+	} else if br, err = s3.GetBillRepositoryForAwsAccountById(aa, brId, tx); err != nil {
+	} else {
+		return br, nil
+	}
+	return br, err
 }
 
 func registerUpdate(db *sql.DB, br s3.BillRepository) (int64, error) {

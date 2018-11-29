@@ -60,6 +60,7 @@ var tasks = map[string]func(context.Context) error{
 	"process-account-plugins": taskProcessAccountPlugins,
 	"anomalies-detection":     taskAnomaliesDetection,
 	"check-user-entitlement":  taskCheckEntitlement,
+	"setup-master-account":    taskSetupMasterAccount,
 }
 
 // dockerHostnameRe matches the value of the HOSTNAME environment variable when
@@ -98,7 +99,9 @@ func schedulePeriodicTasks() {
 func taskServer(ctx context.Context) error {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	initializeHandlers()
-	setupInitialAccount(ctx)
+	if err := taskSetupMasterAccount(ctx); err != nil {
+		return err
+	}
 	if config.Periodics {
 		schedulePeriodicTasks()
 		logger.Info("Scheduled periodic tasks.", nil)
@@ -107,20 +110,6 @@ func taskServer(ctx context.Context) error {
 	err := http.ListenAndServe(config.HttpAddress, nil)
 	logger.Error("Server stopped.", err.Error())
 	return err
-}
-
-// setupInitialAccount create a master account to application and the bill
-// repository
-func setupInitialAccount(ctx context.Context) {
-	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	if config.MasterEmail != "" && config.Bucket != "" {
-		user, err := taskSetupMasterAccount(ctx)
-		if err != nil {
-			logger.Error("Failed to setup Master Account. ", err.Error())
-		} else {
-			logger.Info("Setup Master Account done.", user)
-		}
-	}
 }
 
 // initializeHandlers sets the HTTP server up with handler functions.
