@@ -10,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/text/message"
+
 	//"github.com/aws/aws-sdk-go/aws"
 	//"github.com/aws/aws-sdk-go/service/s3"
 	//"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -60,7 +63,7 @@ func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.R
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		</head>
 		<body>
-			<center><h1>Cost Report
+			<center><h1>AWS Usage Report</h1></center>
 `
 
 	generalInformation := &GeneralInformation{}
@@ -72,9 +75,9 @@ func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.R
 
 	generalFormated := formatGeneral(generalInformation, begin, end)
 
-	email += begin.Format("2006-01-02")
+	//email += begin.Format("2006-01-02")
 
-	email += "</h1></center>"
+	//email += "</h1></center>"
 
 	email += generalFormated
 
@@ -98,8 +101,9 @@ func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.R
 func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end time.Time) string {
 
 	var formated bytes.Buffer
-	formated.WriteString("Data report " + begin.Format("2006-01-02") + " to " + end.Format("2006-01-02"))
 	formated.WriteString("<table><tr>")
+	formated.WriteString("<td><b>Date report</b></td><td>" + begin.Format("2006-01-02") + " ~ " + end.Format("2006-01-02") + "</td>")
+	formated.WriteString("</tr><tr>")
 	formated.WriteString("<td><b>Active reserved instances</b></td>")
 	formated.WriteString("<td>" + strconv.FormatInt(generalInformation.TotalActiveRI, 10) + "</td></tr>")
 	formated.WriteString("<tr><td><b>Active reserved cost </b></td>")
@@ -171,7 +175,7 @@ func formatTags(tagsValues tags.TagsValuesResponse, generalInformation *GeneralI
 		key := keys[i]
 		formated.WriteString("<tr><td>" + key + "</td><td>" + fToS(ec2Application[key]) + "</td><td>" + fToS(rdsApplication[key]) + "</td></tr>")
 	}
-	formated.WriteString("</table>...<br />")
+	formated.WriteString("</table><a href=\"http://trackit-client.apps.topaz-analytics.com/app/tags\">Ver mais</a><br />")
 	return formated.String()
 }
 
@@ -193,7 +197,7 @@ func formatReserved(reservedInstances []tri.ReservedInstance, generalInformation
 	for family, reserved := range computational {
 		formated.WriteString("<tr><td>" + family + "</td><td>" + fToS(reserved) + "</td><td>" + fToS(cost[family]) + "</td></tr>")
 	}
-	formated.WriteString("</table>")
+	formated.WriteString("</table><br /><a href=\"http://trackit-client.apps.topaz-analytics.com/app/reserves\">Ver mais</a><br />")
 
 	return formated.String()
 }
@@ -206,7 +210,7 @@ func formatReportReserved(reportRI ri.ResponseReservedInstance) string {
 	formated.WriteString("</table></td><td>")
 	formated.WriteString("<table><tr><td>Family</td><td>Total Discount</td><td>Usage</td><td>Cost per usage</td><td>Normalization Factor</td></tr>")
 	formated.WriteString(getUsage(reportRI["DiscountedUsage"]))
-	formated.WriteString("</td></tr></table> <br />...")
+	formated.WriteString("</td></tr></table> <br /><a href=\"http://trackit-client.apps.topaz-analytics.com/app/usages\">Ver mais</a><br />")
 
 	return formated.String()
 }
@@ -261,7 +265,7 @@ func formatUnusedInstances(instances []ec2.InstanceReport, generalInformation *G
 		key := keys[i]
 		formated.WriteString("<tr><td><b>" + key + "</b></td><td>" + fToS(unusedCost[key]) + "</td><td>" + fToS(unusedAmount[key]) + "</td><td>" + unusedNames[key] + "</td></tr>")
 	}
-	formated.WriteString("</table><br />...")
+	formated.WriteString("</table><br /><a href=\"http://trackit-client.apps.topaz-analytics.com/app/resources\">Ver mais</a>")
 	return formated.String()
 }
 
@@ -296,10 +300,11 @@ func formatS3Buckets(buckets ts3.BucketsInfo, generalInformation *GeneralInforma
 	for i := 0; i < 10 && len(instanceBuckets) > i; i++ {
 		formated.WriteString("<tr><td>" + strconv.Itoa(i) + "</td><td><b>" + instanceBuckets[i]["name"] + "</b></td><td>" + instanceBuckets[i]["total"] + "</td><td>" + instanceBuckets[i]["valueGb"] + "</td><td>" + instanceBuckets[i]["size"] + "</td></tr>")
 	}
-	formated.WriteString("</table><br />...")
+	formated.WriteString("</table><br /><a href=\"http://trackit-client.apps.topaz-analytics.com/app/s3\">Ver mais</a>")
 	return formated.String()
 }
 
 func fToS(float float64) string {
-	return strconv.FormatFloat(float, 'f', 2, 64)
+	printer := message.NewPrinter(message.MatchLanguage("en"))
+	return printer.Sprintf("%-.2f", float)
 }

@@ -445,6 +445,12 @@
 			"revisionTime": "2017-07-19T03:38:01Z"
 		},
 		{
+			"checksumSHA1": "g0tcknkERI2Jq50d44REUOr1A+E=",
+			"path": "golang.org/x/text/message",
+			"revision": "6f44c5a2ea40ee3593d98cdcc905cc1fdaa660e2",
+			"revisionTime": "2018-10-29T18:00:05Z"
+		},
+		{
 			"checksumSHA1": "V4M/6A62nVBzPFxPbN+EAatCrVs=",
 			"path": "golang.org/x/tools/cmd/goimports",
 			"revision": "0b88a3aa0751a3accc5cadec90e6c9bc88e8219e",
