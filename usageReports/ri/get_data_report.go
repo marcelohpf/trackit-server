@@ -41,6 +41,7 @@ func getElasticSearchReportParams(params RiReportQueryParams, client *elastic.Cl
 	query = query.Filter(elastic.NewRangeQuery("usageStartDate").From(params.begin))
 	query = query.Filter(elastic.NewRangeQuery("usageEndDate").To(params.end))
 	query = query.Filter(elastic.NewTermQuery("productCode", "AmazonEC2"))
+	query = query.Filter(elastic.NewWildcardQuery("usageType", "*BoxUsage*"))
 
 	search := client.Search().Index(index).Query(query)
 

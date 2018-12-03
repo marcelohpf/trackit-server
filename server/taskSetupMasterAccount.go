@@ -13,10 +13,10 @@ import (
 	"github.com/trackit/trackit-server/aws/s3"
 	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/db"
-	//"github.com/trackit/trackit-server/models"
 	"github.com/trackit/trackit-server/users"
 )
 
+// taskSetupMasterAccount create and validate the creation for a Master Trackit Account
 func taskSetupMasterAccount(ctx context.Context) (err error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	var tx *sql.Tx

@@ -18,6 +18,7 @@ import (
 )
 
 const maxAggregationSize = 0x7FFFFFFF
+const maxQuerySize = 10000
 
 func GetEC2ReservedInstances(ctx context.Context, parsedParams RiQueryParams, user users.User, tx *sql.Tx) (int, []ri.ReservedInstance, error) {
 	accountsAndIndexes, returnCode, err := es.GetAccountsAndIndexes(parsedParams.accountList, user, tx, ri.IndexPrefixEC2Reserved)
@@ -63,12 +64,13 @@ func executeElasticSearchQuery(ctx context.Context, search *elastic.SearchServic
 // Instances that begins from a specific type and is active or not
 func getElasticSearchRiParams(params RiQueryParams, client *elastic.Client, index string) *elastic.SearchService {
 	query := elastic.NewBoolQuery()
-	query = query.Filter(elastic.NewRangeQuery("startDate").From(params.begin).To(params.end))
+	query = query.Filter(elastic.NewRangeQuery("startDate").From(nil).To(params.end))
+	query = query.Filter(elastic.NewRangeQuery("endDate").From(params.begin).To(nil))
 
 	if params.state != "all" {
 		query = query.Filter(elastic.NewTermsQuery("state", params.state))
 	}
 
-	search := client.Search().Index(index).Query(query)
+	search := client.Search().Index(index).Query(query).Size(maxQuerySize)
 	return search
 }

@@ -80,13 +80,13 @@ func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.R
 
 	email += "<hr /><h3>More information</h3>"
 
-	email += bucketsFormated
-
 	email += reservedFormated
 
-	email += instancesFormated
-
 	email += unusedFormated
+
+	email += bucketsFormated
+
+	email += instancesFormated
 
 	email += tagsFormated
 
@@ -123,7 +123,7 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 	formated.WriteString("<td>" + fToS(generalInformation.TotalDailyUsageS3) + "GB </td></tr>")
 	formated.WriteString("<tr><td><b>Cost S3 per day</b></td>")
 	formated.WriteString("<td>$ " + fToS(generalInformation.TotalDailyCostS3) + "</td>")
-	formated.WriteString("</tr><tr><td><b>Instances S3 </b></td>")
+	formated.WriteString("</tr><tr><td><b>Buckets S3 </b></td>")
 	formated.WriteString("<td>" + strconv.Itoa(generalInformation.TotalInstancesS3) + "</td></tr>")
 	formated.WriteString("<tr><td>-</td><td></td></tr>")
 
