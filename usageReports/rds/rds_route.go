@@ -127,3 +127,18 @@ func getRdsUnusedInstances(request *http.Request, a routes.Arguments) (int, inte
 		return returnCode, report
 	}
 }
+
+func GetRdsQueryParams(accountList []string, date time.Time) RdsQueryParams {
+	return RdsQueryParams{
+		accountList: accountList,
+		date:        date,
+	}
+}
+
+func GetRdsUnusedQueryParams(accountList []string, date time.Time) RdsUnusedQueryParams {
+	return RdsUnusedQueryParams{
+		accountList: accountList,
+		date:        date,
+		count:       -1,
+	}
+}

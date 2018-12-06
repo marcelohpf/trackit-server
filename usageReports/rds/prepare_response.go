@@ -159,7 +159,7 @@ func prepareResponseRdsMonthly(ctx context.Context, resRds *elastic.SearchResult
 	return instances, nil
 }
 
-func isInstanceUnused(instance rds.Instance) bool {
+func IsInstanceUnused(instance rds.Instance) bool {
 	average := instance.Stats.Cpu.Average
 	peak := instance.Stats.Cpu.Peak
 	if peak >= 60.0 {
@@ -174,7 +174,7 @@ func isInstanceUnused(instance rds.Instance) bool {
 func prepareResponseRdsUnused(params RdsUnusedQueryParams, instances []rds.InstanceReport) (int, []rds.InstanceReport, error) {
 	unusedInstances := make([]rds.InstanceReport, 0)
 	for _, instance := range instances {
-		if isInstanceUnused(instance.Instance) {
+		if IsInstanceUnused(instance.Instance) {
 			unusedInstances = append(unusedInstances, instance)
 		}
 	}

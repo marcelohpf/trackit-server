@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
+	"github.com/trackit/trackit-server/aws/product"
 	"github.com/trackit/trackit-server/awsSession"
 	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/db"
@@ -39,6 +40,7 @@ import (
 	"github.com/trackit/trackit-server/costs/tags"
 	ts3 "github.com/trackit/trackit-server/s3/costs"
 	"github.com/trackit/trackit-server/usageReports/ec2"
+	"github.com/trackit/trackit-server/usageReports/rds"
 	"github.com/trackit/trackit-server/usageReports/ri"
 )
 
@@ -276,13 +278,35 @@ func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}
 		return returnCode, err
 	}
 
-	content, err := formatEmail(ec2RiReport, ec2Ri, s3Cost, unusedEc2, tagsGroup, esCost, parsedParams.begin, parsedParams.end)
+	// fetch ec2 instances
+	ec2Params := ec2.GetEc2QueryParams(parsedParams.accountList, parsedParams.begin)
+
+	returnCode, ec2Instances, err := ec2.GetEc2Data(ctx, ec2Params, user, tx)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	// fetch rds instances
+	rdsParams := rds.GetRdsQueryParams(parsedParams.accountList, parsedParams.begin)
+
+	returnCode, rdsInstances, err := rds.GetRdsData(ctx, rdsParams, user, tx)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	productsPrice, err := product.GetProductsEC2HourlyPrice(ctx)
+
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	content, err := formatEmail(ec2RiReport, ec2Ri, s3Cost, unusedEc2, tagsGroup, esCost, ec2Instances, rdsInstances, productsPrice, parsedParams.begin, parsedParams.end)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
 
 	// sending mail
-	err = mail.SendHTMLMail(parsedParams.targetList, "Cost Report", content, ctx)
+	err = mail.SendHTMLMail(parsedParams.targetList, "AWS Usage Report", content, ctx)
 	if err != nil {
 		return http.StatusInternalServerError, err
 

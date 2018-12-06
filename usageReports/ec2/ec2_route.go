@@ -127,3 +127,11 @@ func getEc2UnusedInstances(request *http.Request, a routes.Arguments) (int, inte
 		return returnCode, report
 	}
 }
+
+func GetEc2QueryParams(accountList []string, date time.Time) Ec2QueryParams {
+	return Ec2QueryParams{
+		accountList: accountList,
+		date:        date,
+	}
+
+}

@@ -16,6 +16,7 @@ package aws
 
 import (
 	"fmt"
+	"math"
 )
 
 // ValidateAwsAccounts will validate a slice of int passed to it.
@@ -27,4 +28,34 @@ func ValidateAwsAccounts(awsAccounts []string) error {
 		}
 	}
 	return nil
+}
+
+var Normalization = map[string]float64{
+	"nano":     0.25,
+	"micro":    0.5,
+	"small":    1,
+	"medium":   2,
+	"large":    4,
+	"xlarge":   8,
+	"2xlarge":  16,
+	"4xlarge":  32,
+	"8xlarge":  64,
+	"9xlarge":  72,
+	"10xlarge": 80,
+	"12xlarge": 96,
+	"16xlarge": 128,
+	"18xlarge": 144,
+	"24xlarge": 192,
+	"32xlarge": 256,
+}
+
+func InverseNormalizationFactor(normalization float64) string {
+
+	for name, norm := range Normalization {
+		if math.Abs(norm-normalization) < 0.001 {
+			return name
+		}
+	}
+
+	return "unkown"
 }

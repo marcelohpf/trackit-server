@@ -15,225 +15,185 @@ package product
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
+	"errors"
 	"strconv"
-	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/pricing"
 
 	"github.com/trackit/jsonlog"
 
+	taws "github.com/trackit/trackit-server/aws"
 	"github.com/trackit/trackit-server/config"
-	"github.com/trackit/trackit-server/db"
-	"github.com/trackit/trackit-server/models"
 )
-
-// BulkLimit is the limit after which the
-// bulk is inserted to the database.
-const BulkLimit = 100
-
-const NsToMsVal = 1000000
-const Ec2ProductName = "ec2"
-
-var offsetParam = map[json.Token]int{
-	json.Delim('{'): 1,
-	json.Delim('}'): -1,
-}
 
 type (
-	Sku string
-
-	Attribute struct {
-		InstanceType       string
-		CurrentGeneration  string
-		Vcpu               string
-		Memory             string
-		Storage            string
-		NetworkPerformance string
-		Tenancy            string
-		OperatingSystem    string
-		Ecu                string
-		Location           string
-		LocationType       string
+	EC2Product struct {
+		Family              string
+		Normalization       float64
+		InstanceType        string
+		InstancePricing     float64
+		HourlyPricing       float64
+		PurchaseOption      string
+		PriceCurrency       string
+		LeaseContractLength string
+		OfferingClass       string
 	}
-
-	Product struct {
-		Sku           Sku
-		ProductFamily string
-		Attributes    Attribute
-	}
+	EC2ProductsPrice map[string]float64
 )
 
-// storeAttributes stores all the attributes from Attribute
-// to models.AwsProductEc2
-func storeAttributes(ctx context.Context, attributes *Attribute,
-	dbAwsProductPricing *models.AwsProductPricingEc2) {
+const HOURSYEAR = 8765.81256
+const HOURSMONTH = 730.48438
+const EC2ProductSessionName = "GetEC2Products"
+
+func GetProductsEC2HourlyPrice(ctx context.Context) (EC2ProductsPrice, error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	dbAwsProductPricing.InstanceType = attributes.InstanceType
-	if attributes.CurrentGeneration != "Yes" && attributes.CurrentGeneration != "No" {
-		logger.Info("Unexpected value in CurrentGeneration when storing product data", attributes.CurrentGeneration)
+	creds, err := taws.GetTemporaryCredentials()
+
+	if err != nil {
+		logger.Error("Error when getting temporary credentials", err.Error())
+		return nil, err
 	}
-	dbAwsProductPricing.CurrentGeneration = (attributes.CurrentGeneration == "Yes")
-	if val, err := strconv.Atoi(attributes.Vcpu); err == nil {
-		dbAwsProductPricing.Vcpu = val
-	} else {
-		logger.Info("Unexpected value in Vcpu when storing product data", attributes.Vcpu)
+
+	products, err := fetchProducts(ctx, creds)
+	if err != nil {
+		logger.Error("Error when fetching products", err.Error())
+		return nil, err
 	}
-	dbAwsProductPricing.Memory = attributes.Memory
-	dbAwsProductPricing.Storage = attributes.Storage
-	dbAwsProductPricing.NetworkPerformance = attributes.NetworkPerformance
-	dbAwsProductPricing.Tenancy = attributes.Tenancy
-	dbAwsProductPricing.OperatingSystem = attributes.OperatingSystem
-	dbAwsProductPricing.Ecu = attributes.Ecu
-	if attributes.LocationType == "AWS Region" {
-		dbAwsProductPricing.Region = attributes.Location
-	} else {
-		logger.Info("Unexpected value in LocationType when storing product data", attributes.LocationType)
+
+	productsPrice := EC2ProductsPrice{}
+	for _, product := range products {
+		productsPrice[product.InstanceType] = product.HourlyPricing
 	}
+	return productsPrice, nil
 }
 
-// consumeJsonUntilProduct consumes and ignores values
-// until products field
-func consumeJsonUntilProduct(decoder *json.Decoder) error {
-	var offset int
+func fetchProducts(ctx context.Context, creds *credentials.Credentials) ([]EC2Product, error) {
+	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 
-	for t, err := decoder.Token(); t != "products" || offset != 1; t, err = decoder.Token() {
+	sess, _ := session.NewSession(&aws.Config{
+		Credentials: creds,
+		Region:      aws.String(config.AwsRegion),
+	})
+
+	svc := pricing.New(sess)
+	input := &pricing.GetProductsInput{
+		Filters: []*pricing.Filter{
+			{
+				Type:  aws.String("TERM_MATCH"),
+				Field: aws.String("PurchaseOption"),
+				Value: aws.String("All Upfront"),
+			},
+			{
+				Type:  aws.String("TERM_MATCH"),
+				Field: aws.String("ProductFamily"),
+				Value: aws.String("Compute Instance"),
+			},
+			{
+				Type:  aws.String("TERM_MATCH"),
+				Field: aws.String("location"),
+				Value: aws.String("US East (N. Virginia)"),
+			},
+			{
+				Type:  aws.String("TERM_MATCH"),
+				Field: aws.String("operatingSystem"),
+				Value: aws.String("Linux"),
+			},
+			{
+				Type:  aws.String("TERM_MATCH"),
+				Field: aws.String("preInstalledSw"),
+				Value: aws.String("NA"),
+			},
+			{
+				Type:  aws.String("TERM_MATCH"),
+				Field: aws.String("tenancy"),
+				Value: aws.String("Shared"),
+			},
+		},
+		FormatVersion: aws.String("aws_v1"),
+		MaxResults:    aws.Int64(100),
+		ServiceCode:   aws.String("AmazonEC2"),
+		NextToken:     aws.String(""), // first fetch
+	}
+
+	var products []EC2Product
+
+	for { // fetch while has products
+		result, err := svc.GetProducts(input)
+
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if param, ok := offsetParam[t]; ok {
-			offset += param
-		}
-	}
-	decoder.Token()
-	return nil
-}
 
-// consumeJsonProducts consumes and imports products until
-// the end of the JSON products field's content
-func consumeJsonProducts(ctx context.Context, etag string, decoder *json.Decoder, tx models.XODB) error {
-	var nbInstance int
-
-	dbAwsProductPricingBulk := models.AwsProductPricingEc2Bulk{BulkLimit: BulkLimit}
-	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	start := time.Now()
-	for t, err := decoder.Token(); t != json.Delim('}'); t, err = decoder.Token() {
-		if err != nil {
-			logger.Error("Error when detecting token in pricing JSON", err.Error())
-			return err
-		}
-		var product Product
-
-		if err := decoder.Decode(&product); err != nil {
-			logger.Error("Error when decoding and storing json in the struct", err.Error())
-			return err
-		}
-		if product.ProductFamily == "Compute Instance" {
-			dbAwsProductPricing := models.AwsProductPricingEc2{
-				Sku:  string(product.Sku),
-				Etag: etag,
+		for _, item := range result.PriceList { // process the batch products
+			ec2product, err := processItemList(item)
+			if err != nil {
+				logger.Warning("Fail to process a item in list of Products.", err.Error())
+			} else {
+				products = append(products, ec2product)
 			}
-			storeAttributes(ctx, &product.Attributes, &dbAwsProductPricing)
-			if err := dbAwsProductPricingBulk.AppendAndInsertIfLimitExceeded(dbAwsProductPricing, tx); err != nil {
-				logger.Error("Error when inserting product in database", err.Error())
-				return err
+		}
+
+		if result.NextToken != nil {
+			input.SetNextToken(*result.NextToken)
+		} else {
+			break
+		}
+
+	}
+	return products, nil
+}
+
+func processItemList(item aws.JSONValue) (EC2Product, error) {
+	terms := item["terms"].(map[string]interface{})
+	reserveds := terms["Reserved"].(map[string]interface{})
+
+	for _, ireserved := range reserveds {
+		//fmt.Println("reserved")
+		reserved := ireserved.(map[string]interface{})
+		termAttributes := reserved["termAttributes"].(map[string]interface{})
+
+		purchaseOption := termAttributes["PurchaseOption"].(string)
+		offeringClass := termAttributes["OfferingClass"].(string)
+		leaseContractLength := termAttributes["LeaseContractLength"].(string)
+
+		if purchaseOption == "All Upfront" && offeringClass == "standard" && leaseContractLength == "1yr" {
+
+			priceDimensions := reserved["priceDimensions"].(map[string]interface{})
+
+			for _, ipriceDimension := range priceDimensions {
+
+				priceDimension := ipriceDimension.(map[string]interface{})
+
+				if priceDimension["unit"].(string) == "Quantity" { // search for only up front fee
+					pricePerUnit := priceDimension["pricePerUnit"].(map[string]interface{})
+					product := item["product"].(map[string]interface{})
+					attributes := product["attributes"].(map[string]interface{})
+					strPricing := pricePerUnit["USD"].(string)
+
+					pricing, err := strconv.ParseFloat(strPricing, 64)
+
+					if err != nil {
+						return EC2Product{}, err
+					}
+
+					ec2Product := EC2Product{
+						Family:              "",
+						Normalization:       0.0,
+						InstanceType:        attributes["instanceType"].(string),
+						InstancePricing:     pricing,
+						HourlyPricing:       pricing / HOURSYEAR,
+						PurchaseOption:      purchaseOption,
+						PriceCurrency:       "USD",
+						LeaseContractLength: leaseContractLength,
+						OfferingClass:       offeringClass,
+					}
+					return ec2Product, nil
+				}
 			}
-			nbInstance++
 		}
 	}
-	if err := dbAwsProductPricingBulk.BulkInsertOrUpdate(tx); err != nil {
-		logger.Error("Error when inserting product in database", err.Error())
-		return err
-	}
-	logger.Info(fmt.Sprintf("%d instance(s) successfully stored in %dms.", nbInstance, time.Now().Sub(start)/NsToMsVal), nil)
-	return nil
-}
-
-// importResult parses the body returned by downloadJSON and
-// inserts the pricing to the database.
-func importResult(ctx context.Context, etag string, reader io.ReadCloser, tx models.XODB) error {
-	defer reader.Close()
-
-	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	decoder := json.NewDecoder(reader)
-	if err := consumeJsonUntilProduct(decoder); err != nil {
-		logger.Error("Error when detecting token in pricing JSON", err.Error())
-		return err
-	}
-
-	return consumeJsonProducts(ctx, etag, decoder, tx)
-}
-
-// saveLastFetch saves in the database the last fetched Etag.
-// Thus, downloadJson will not download twice a same JSON.
-func saveLastFetch(lastFetch *models.AwsProductPricingUpdate, newEtag string, tx models.XODB) error {
-	if lastFetch != nil {
-		lastFetch.Delete(tx)
-	}
-	dbAfp := models.AwsProductPricingUpdate{
-		Product: "ec2",
-		Etag:    newEtag,
-	}
-	return dbAfp.Insert(tx)
-}
-
-// downloadJson requests AWS' API and returns the etag from the json downloaded
-// and its body after checking if there's already the same version in the database.
-func downloadJson(ctx context.Context, tx models.XODB) (string, io.ReadCloser, error) {
-	var etag string
-
-	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	hc := http.Client{}
-	req, err := http.NewRequest(http.MethodGet, config.UrlEc2Pricing, nil)
-	if err != nil {
-		return etag, nil, err
-	}
-	lastFetch, err := models.AwsProductPricingUpdateByProduct(db.Db, Ec2ProductName)
-	if err == nil {
-		etag = lastFetch.Etag
-		req.Header.Add("If-None-Match", lastFetch.Etag)
-	}
-	req = req.WithContext(ctx)
-	start := time.Now()
-	res, err := hc.Do(req)
-	if err != nil {
-		return etag, nil, err
-	}
-	if res.StatusCode == http.StatusNotModified {
-		logger.Info("JSON Stream halted: Already exists with ETag.\n", lastFetch.Etag)
-		return etag, nil, nil
-	}
-	if err = saveLastFetch(lastFetch, res.Header["Etag"][0], tx); err != nil {
-		logger.Error("Error when saving the dbAfp", err.Error())
-		return etag, nil, err
-	}
-	logger.Info(fmt.Sprintf("JSON streamed in %dms", time.Now().Sub(start)/NsToMsVal), nil)
-	etag = res.Header["Etag"][0]
-	return etag, res.Body, nil
-}
-
-// ImportEc2Pricing downloads the EC2 Pricing from AWS and
-// store it to the database.
-func ImportEc2Pricing(ctx context.Context, tx *sql.Tx) error {
-	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	start := time.Now()
-	logger.Info("Attempting to stream JSON of pricing", nil)
-	etag, res, err := downloadJson(ctx, tx)
-	if err != nil {
-		logger.Error("Error when streaming the JSON file", err.Error())
-		return err
-	} else if res == nil {
-		return nil
-	}
-	if err := importResult(ctx, etag, res, tx); err != nil {
-		logger.Error("Error when importing the result of the downloaded JSON", err.Error())
-		return err
-	} else if err := models.AwsProductPricingEc2PurgeWhenNotEtag(etag, tx); err != nil {
-		logger.Error("Error when purging the old data of EC2 Pricing", err.Error())
-		return err
-	}
-	logger.Info(fmt.Sprintf("EC2 Pricing successfully imported in %dms.", time.Now().Sub(start)/NsToMsVal), nil)
-	return nil
+	return EC2Product{}, errors.New("Not found a Full Upfront, 1 year, with USD values.")
 }
