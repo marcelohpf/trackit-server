@@ -23,10 +23,10 @@ import (
 
 	"github.com/trackit/jsonlog"
 
+	"github.com/trackit/trackit-server/aws"
 	"github.com/trackit/trackit-server/db"
 	"github.com/trackit/trackit-server/routes"
 	"github.com/trackit/trackit-server/users"
-	"github.com/trackit/trackit-server/aws"
 )
 
 // postAwsAccountRequestBody is the expected request body for the
@@ -85,7 +85,7 @@ func postAwsAccountWithValidBody(r *http.Request, tx *sql.Tx, user users.User, b
 // saves it to the database.
 func testAndCreateAwsAccount(ctx context.Context, tx *sql.Tx, account *aws.AwsAccount, user *users.User) error {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	if _, err := aws.GetTemporaryCredentials(*account, "validityTest"); err != nil {
+	if _, err := aws.GetTemporaryCredentials(); err != nil {
 		fmt.Print(err)
 		return errInvalidAccount
 	}

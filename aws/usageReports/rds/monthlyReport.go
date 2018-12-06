@@ -48,15 +48,19 @@ func fetchMonthlyInstancesList(ctx context.Context, creds *credentials.Credentia
 		stats := getInstanceStats(ctx, DBInstance, sess, startDate, endDate)
 		costs := make(map[string]float64, 0)
 		costs["instance"] = inst.Cost
+		dbInstanceClass := aws.StringValue(DBInstance.DBInstanceClass)
+		family, normalizationFactor := familyNormalizeFactor(dbInstanceClass)
 		instanceChan <- Instance{
 			DBInstanceIdentifier: aws.StringValue(DBInstance.DBInstanceIdentifier),
 			AvailabilityZone:     aws.StringValue(DBInstance.AvailabilityZone),
-			DBInstanceClass:      aws.StringValue(DBInstance.DBInstanceClass),
+			DBInstanceClass:      dbInstanceClass,
 			Engine:               aws.StringValue(DBInstance.Engine),
 			AllocatedStorage:     aws.Int64Value(DBInstance.AllocatedStorage),
 			MultiAZ:              aws.BoolValue(DBInstance.MultiAZ),
 			Costs:                costs,
 			Stats:                stats,
+			Family:               family,
+			NormalizationFactor:  normalizationFactor,
 		}
 	}
 	return nil
@@ -65,7 +69,7 @@ func fetchMonthlyInstancesList(ctx context.Context, creds *credentials.Credentia
 // getRdsMetrics gets credentials, accounts and region to fetch RDS instances stats
 func getRdsMetrics(ctx context.Context, instancesList []utils.CostPerResource, aa taws.AwsAccount, startDate, endDate time.Time) ([]InstanceReport, error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	creds, err := taws.GetTemporaryCredentials(aa, RDSStsSessionName)
+	creds, err := taws.GetTemporaryCredentials()
 	if err != nil {
 		logger.Error("Error when getting temporary credentials", err.Error())
 		return nil, err

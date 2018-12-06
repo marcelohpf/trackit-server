@@ -97,7 +97,7 @@ func runPluginsForAccount(ctx context.Context, user users.User, aa aws.AwsAccoun
 			Category:   plugin.Category,
 			Label:      plugin.Label,
 		}
-		creds, err := aws.GetTemporaryCredentials(aa, fmt.Sprintf("trackit-%s-plugin", plugin.Name))
+		creds, err := aws.GetTemporaryCredentials()
 		if err != nil {
 			logger.Error("Error when getting temporary credentials", err.Error())
 			pluginResultES.Error = fmt.Sprintf("Error when getting temporary credentials: %s", err.Error())

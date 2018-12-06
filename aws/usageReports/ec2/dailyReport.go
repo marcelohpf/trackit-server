@@ -75,7 +75,7 @@ func fetchDailyInstancesList(ctx context.Context, creds *credentials.Credentials
 func FetchDailyInstancesStats(ctx context.Context, awsAccount taws.AwsAccount) error {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	logger.Info("Fetching EC2 instance stats", map[string]interface{}{"awsAccountId": awsAccount.Id})
-	creds, err := taws.GetTemporaryCredentials(awsAccount, MonitorInstanceStsSessionName)
+	creds, err := taws.GetTemporaryCredentials()
 	if err != nil {
 		logger.Error("Error when getting temporary credentials", err.Error())
 		return err

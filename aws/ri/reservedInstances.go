@@ -66,7 +66,7 @@ func fetchReservedInstances(ctx context.Context, creds *credentials.Credentials,
 // FetchReservedInstances fetch reserved instances in AWS EC2 api of an AwsAccount and load it in ElasticSearch
 func FetchReservedInstances(ctx context.Context, awsAccount taws.AwsAccount) error {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	creds, err := taws.GetTemporaryCredentials(awsAccount, ReserveInstanceSessionName)
+	creds, err := taws.GetTemporaryCredentials()
 	if err != nil {
 		logger.Error("Error when getting temporary credentials", err.Error())
 		return err

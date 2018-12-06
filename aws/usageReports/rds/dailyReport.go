@@ -69,7 +69,7 @@ func fetchDailyInstancesList(ctx context.Context, creds *credentials.Credentials
 func FetchDailyInstancesStats(ctx context.Context, aa taws.AwsAccount) error {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	logger.Info("Fetching RDS instance stats", map[string]interface{}{"awsAccountId": aa.Id})
-	creds, err := taws.GetTemporaryCredentials(aa, RDSStsSessionName)
+	creds, err := taws.GetTemporaryCredentials()
 	if err != nil {
 		logger.Error("Error when getting temporary credentials", err.Error())
 		return err

@@ -353,7 +353,7 @@ func readManifest(ctx context.Context, s3mgr *dumbS3Manager, bk BillKey) <-chan 
 // successful.
 func getServiceForRepository(ctx context.Context, aa taws.AwsAccount, br BillRepository) (*s3.S3, billRepositoryWithRegion, error) {
 	var brr billRepositoryWithRegion
-	creds, err := taws.GetTemporaryCredentials(aa, ReadBillsStsSessionName)
+	creds, err := taws.GetTemporaryCredentials()
 	if err != nil {
 		return nil, brr, err
 	}

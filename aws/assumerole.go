@@ -23,7 +23,7 @@ import (
 // GetTemporaryCredentials gets temporary credentials in a client's AWS account
 // using the STS AssumeRole feature. The returned credentials will last no more
 // than an hour. The returned credentials are valid iff the error is nil.
-func GetTemporaryCredentials(aa AwsAccount, sessionName string) (*credentials.Credentials, error) {
+func GetTemporaryCredentials() (*credentials.Credentials, error) {
 	//creds := stscreds.NewCredentials(awsSession.Session, aa.RoleArn, func(arp *stscreds.AssumeRoleProvider) {
 	//	arp.ExternalID = &aa.External
 	//})

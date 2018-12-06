@@ -37,6 +37,7 @@ type (
 	}
 
 	ReservedInstanceReport struct {
+		InstanceType        string  `json:"instanceType"`
 		Type                string  `json:"type"`
 		Family              string  `json:"family"`
 		NormalizationFactor float64 `json:"normalizationFactor"`

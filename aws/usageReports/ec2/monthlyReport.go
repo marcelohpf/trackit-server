@@ -73,7 +73,7 @@ func fetchMonthlyInstancesList(ctx context.Context, creds *credentials.Credentia
 // getEc2Metrics gets credentials, accounts and region to fetch EC2 instances stats
 func fetchMonthlyInstancesStats(ctx context.Context, instances []utils.CostPerResource, aa taws.AwsAccount, startDate, endDate time.Time) ([]InstanceReport, error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	creds, err := taws.GetTemporaryCredentials(aa, MonitorInstanceStsSessionName)
+	creds, err := taws.GetTemporaryCredentials()
 	if err != nil {
 		logger.Error("Error when getting temporary credentials", err.Error())
 		return nil, err
