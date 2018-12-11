@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/text/message"
-
 	"github.com/trackit/trackit-server/aws"
 	"github.com/trackit/trackit-server/aws/product"
 	tri "github.com/trackit/trackit-server/aws/ri"
@@ -34,10 +32,10 @@ type (
 		ReservesWillExpire int     // $ invested
 
 		// LowUsedInstances
-		TotalLowUsedInstances        int     // #
+		LowUsedInstancesEc2          int     // #
 		TotalLowUsedInatancesEc2Cost float64 // $
 		HistogramUnusedEc2           Histogram
-		LowUsedRds                   int // #
+		LowUsedInstancesRds          int // #
 
 		// S3
 		TotalUsageS3      float64 // GB
@@ -52,10 +50,11 @@ type (
 		//TotalInstancesRds int // #
 
 		// Ec2
-		TotalCostInstancesEC2 float64      // $
-		PowerProductEc2       []Ec2Product // %
-		TotalPowerEc2         float64      // %
-		TotalEc2Instances     int64        // #
+		TotalCostInstancesEC2  float64      // $
+		PowerProductEc2        []Ec2Product // %
+		TotalPowerEc2          float64      // %
+		TotalEc2Instances      int64        // #
+		UnreservedEc2Instances float64      // #
 
 		// RDS
 		TotalCostInstancesRDS float64 // $
@@ -110,6 +109,8 @@ func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.R
 	generalInformation.HistogramUnusedEc2 = calculateHistogram(ec2Instances, 5)
 
 	generalFormated := formatGeneral(generalInformation, begin, end)
+
+	submitDatadogMetrics(generalInformation)
 
 	//email += begin.Format("2006-01-02")
 
@@ -200,7 +201,7 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 	formated.WriteString("<tr><td><b>RDS Cost <sup>6</sup></b></td>")
 	formated.WriteString("<td>$ " + fToS(generalInformation.TotalCostInstancesRDS) + "</td></tr>")
 	formated.WriteString("<td><b>RDS Low Used Instances <sup>5</sup></b></td>")
-	formated.WriteString("<td>" + strconv.Itoa(generalInformation.LowUsedRds) + "</td></tr>")
+	formated.WriteString("<td>" + strconv.Itoa(generalInformation.LowUsedInstancesRds) + "</td></tr>")
 	formated.WriteString("<tr><td><b>RDS Low Used Instances Cost</b></td>")
 	formated.WriteString("<td>$ " + fToS(generalInformation.LowUsedRdsCost) + "</td></tr>")
 	formated.WriteString("</table><br />")
@@ -379,6 +380,7 @@ func getUsage(usages []tri.ReservedInstanceReport, productsPrice product.EC2Prod
 			// estimate the number of used machines based on total hours used of a single machine
 			hoursUsage := usage.NormalizedUsage / usage.NormalizationFactor
 			machines := math.Ceil(hoursUsage / float64(interval.Hours()))
+			//generalInformation.UnreservedEc2Instances += machines
 
 			riCost := machines * productsPrice[instanceType] * interval.Hours()
 
@@ -408,7 +410,7 @@ func formatUnusedInstances(instances []ec2.InstanceReport, generalInformation *G
 	unusedAmount := make(map[string]float64)
 	unusedCost := make(map[string]float64)
 	unusedNames := make(map[string]string)
-	generalInformation.TotalLowUsedInstances = len(instances)
+	generalInformation.LowUsedInstancesEc2 = len(instances)
 	for _, instance := range instances {
 		unusedAmount[instance.Instance.Type] += instance.Instance.NormalizationFactor
 		for _, value := range instance.Instance.Costs {
@@ -446,7 +448,7 @@ func formatUnusedRdsInstances(instances []rds.InstanceReport, generalInformation
 
 	for _, instance := range instances {
 		if trds.IsInstanceUnused(instance.Instance) {
-			generalInformation.LowUsedRds += 1
+			generalInformation.LowUsedInstancesRds += 1
 			for _, value := range instance.Instance.Costs {
 				unusedCost[instance.Instance.DBInstanceClass] += value
 				generalInformation.LowUsedRdsCost += value
@@ -605,22 +607,4 @@ func formatS3Buckets(buckets ts3.BucketsInfo, generalInformation *GeneralInforma
 	}
 	formated.WriteString("</table><br /><a href=\"http://trackit-client.apps.topaz-analytics.com/app/s3\">Ver mais</a>")
 	return formated.String()
-}
-
-func formatGb(value float64) (string, float64) {
-	formats := []string{"B", "KB", "MB", "GB", "TB", "PT", "EB", "ZB"}
-
-	byteValue := value * 1024 * 1024 * 1024
-	i := 0
-	for byteValue/1024 >= 1 {
-		byteValue /= 1024
-		i++
-	}
-
-	return formats[i], byteValue
-}
-
-func fToS(float float64) string {
-	printer := message.NewPrinter(message.MatchLanguage("en"))
-	return printer.Sprintf("%-.2f", float)
 }
