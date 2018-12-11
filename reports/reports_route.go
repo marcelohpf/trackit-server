@@ -254,13 +254,10 @@ func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}
 	}
 
 	// fetch tags
-	tagsParams := tags.TagsValuesQueryParams{
+	tagsParams := tags.Ec2TagsValuesQueryParams{
 		AccountList: parsedParams.accountList,
 		DateBegin:   parsedParams.begin,
 		DateEnd:     parsedParams.end.Add(time.Hour*time.Duration(23) + time.Minute*time.Duration(59) + time.Second*time.Duration(59)),
-		TagsKeys:    []string{"Application", "Owner"},
-		Group:       true,
-		By:          "product",
 	}
 
 	returnCode, tagsGroup, err := tags.GetGroupedTags(ctx, tagsParams, user, tx)

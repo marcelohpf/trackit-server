@@ -14,17 +14,6 @@ import (
 
 	"golang.org/x/text/message"
 
-	//"github.com/aws/aws-sdk-go/aws"
-	//"github.com/aws/aws-sdk-go/service/s3"
-	//"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	//"github.com/trackit/trackit-server/awsSession"
-	//"github.com/trackit/trackit-server/config"
-	//"github.com/trackit/trackit-server/db"
-	//"github.com/trackit/trackit-server/models"
-	//"github.com/trackit/trackit-server/routes"
-	//"github.com/trackit/trackit-server/users"
-	//"github.com/trackit/trackit-server/costs"
-
 	"github.com/trackit/trackit-server/aws"
 	"github.com/trackit/trackit-server/aws/product"
 	tri "github.com/trackit/trackit-server/aws/ri"
@@ -63,15 +52,15 @@ type (
 		//TotalInstancesRds int // #
 
 		// Ec2
-		TotalCostProductEc2 float64      // $
-		PowerProductEc2     []Ec2Product // %
-		TotalPowerEc2       float64      // %
-		TotalEc2Instances   int64        // #
+		TotalCostInstancesEC2 float64      // $
+		PowerProductEc2       []Ec2Product // %
+		TotalPowerEc2         float64      // %
+		TotalEc2Instances     int64        // #
 
 		// RDS
-		TotalCostProductRDS float64 // $
-		LowUsedRdsCost      float64 // $
-		TotalInstancesRds   int     // #
+		TotalCostInstancesRDS float64 // $
+		LowUsedRdsCost        float64 // $
+		TotalInstancesRds     int     // #
 	}
 
 	Histogram struct {
@@ -96,7 +85,7 @@ type (
 	}
 )
 
-func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.ReservedInstance, s3info ts3.BucketsInfo, unusedInstances []ec2.InstanceReport, tagsValues tags.TagsValuesResponse, costReport es.SimplifiedCostsDocument, ec2Instances []ec2.InstanceReport, rdsInstances []rds.InstanceReport, productsPrice product.EC2ProductsPrice, begin time.Time, end time.Time) (string, error) {
+func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.ReservedInstance, s3info ts3.BucketsInfo, unusedInstances []ec2.InstanceReport, tagsValues tags.ProductsTagsResponse, costReport es.SimplifiedCostsDocument, ec2Instances []ec2.InstanceReport, rdsInstances []rds.InstanceReport, productsPrice product.EC2ProductsPrice, begin time.Time, end time.Time) (string, error) {
 	email := `
 	<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 	<html xmlns="http://www.w3.org/1999/xhtml">
@@ -113,7 +102,7 @@ func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.R
 	bucketsFormated := formatS3Buckets(s3info, generalInformation)
 	reservedFormated := formatReserved(reservedInstances, generalInformation, begin, end)
 	unusedFormated := formatUnusedInstances(unusedInstances, generalInformation)
-	tagsFormated := formatTags(tagsValues, generalInformation)
+	tagsFormated := formatProductsUsageInstances(tagsValues, generalInformation)
 	instancesFormated := formatReportReserved(reportRI, productsPrice, begin, end, generalInformation)
 	formatEc2Instances(ec2Instances, reservedInstances, generalInformation)
 	unusedRdsFormated := formatUnusedRdsInstances(rdsInstances, generalInformation)
@@ -169,7 +158,7 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 	formated.WriteString("<tr><td><b>EC2 Instances <sup>2</sup></b></td>")
 	formated.WriteString("<td>" + strconv.FormatInt(generalInformation.TotalEc2Instances, 10) + "</td></tr>")
 	formated.WriteString("<tr><td><b>EC2 Instances Cost</b></td>")
-	formated.WriteString("<td>$ " + fToS(generalInformation.TotalCostProductEc2) + "</td></tr>")
+	formated.WriteString("<td>$ " + fToS(generalInformation.TotalCostInstancesEC2) + "</td></tr>")
 
 	formated.WriteString("<tr><td><b>EC2 Computational Power Proportion <sup>3</sup></b></td>")
 	formated.WriteString("<td><table><tr><th width=\"100px\">On Demand</th><th width=\"100px\">Reserved</th></tr>")
@@ -177,7 +166,7 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 	formated.WriteString("<td>" + fToS(generalInformation.DiscountedProportion) + "%</td></tr></table>")
 	formated.WriteString("</td></tr>")
 
-	formated.WriteString("<tr><td><b>Distribution of EC2 Instances <br />by Family<sup>4</sup></b></td>")
+	formated.WriteString("<tr><td><b>Distribution of EC2 Instances <br />by Family <sup>4</sup></b></td>")
 	formated.WriteString("<td> <table cellspacing=\"0\" cellpadding=\"5\"><tr><td><b>Family</b></td><td><b>Power</b></td></tr>")
 	for _, product := range generalInformation.PowerProductEc2 {
 		formated.WriteString("<tr><td>" + product.Family + "</td><td>" + fToS(product.Value) + " %</td></tr>")
@@ -208,8 +197,8 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 
 	formated.WriteString("<tr><td><b>RDS Instances</b></td>")
 	formated.WriteString("<td>" + strconv.Itoa(generalInformation.TotalInstancesRds) + "</td></tr>")
-	formated.WriteString("<tr><td><b>RDS Cost</b></td>")
-	formated.WriteString("<td>$ " + fToS(generalInformation.TotalCostProductRDS) + "</td></tr>")
+	formated.WriteString("<tr><td><b>RDS Cost <sup>6</sup></b></td>")
+	formated.WriteString("<td>$ " + fToS(generalInformation.TotalCostInstancesRDS) + "</td></tr>")
 	formated.WriteString("<td><b>RDS Low Used Instances <sup>5</sup></b></td>")
 	formated.WriteString("<td>" + strconv.Itoa(generalInformation.LowUsedRds) + "</td></tr>")
 	formated.WriteString("<tr><td><b>RDS Low Used Instances Cost</b></td>")
@@ -220,10 +209,37 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 	formated.WriteString("<sup>2</sup> Only instances that generate some cost report in the bill of this month is considered in this count, so it doens't overleap the number of active reserved instances.<br />")
 	formated.WriteString("<sup>3</sup> The proportion of computational power calculate the normalized usage of different instances types in hours during this interval of report.<br />")
 	formated.WriteString("<sup>4</sup> The distribution of instances by family regarding the sum of compute units (ECU) of all instances.<br />")
-	formated.WriteString("<sup>5</sup> Low used instances consider average CPU usage lower than 10% and no peaks of use over 60%<br /><br />")
+	formated.WriteString("<sup>5</sup> Low used instances consider average CPU usage lower than 10% and no peaks of use over 60%.")
+	formated.WriteString("<sup>6</sup> The instance and storage usage are used to calculate the RDS cost.<br /><br />")
 	return formated.String()
 }
 
+func formatProductsUsageInstances(tagsValues tags.ProductsTagsResponse, generalInformation *GeneralInformation) string {
+
+	for _, tag_group := range tagsValues {
+		generalInformation.TotalCostInstancesEC2 += tag_group.Ec2Cost
+		generalInformation.TotalCostInstancesRDS += tag_group.RdsCost
+	}
+
+	sort.Slice(tagsValues, func(i, j int) bool {
+		return tagsValues[i].Ec2Cost > tagsValues[j].Ec2Cost
+	})
+
+	var formated bytes.Buffer
+	formated.WriteString("<h2>More expensives usages for EC2</h2><br /><br />These are applications are the most expensive applications regarding EC2 Product cost. <br /><br /><br />")
+	formated.WriteString("<table width=\"600px\" cellspacing=\"0\" cellpadding=\"5\"><tr><td></td><td><b>Application</b></td><td><b>Owner</b></td><td><b>EC2 Cost</b></td></tr>")
+
+	for i := 0; i < 10 && len(tagsValues) > i; i++ {
+		item := tagsValues[i]
+
+		formated.WriteString("<tr><td>" + strconv.Itoa(i+1) + "</td><td>" + item.Application + "</td><td>" + item.Owner + "</td><td>$ " + fToS(item.Ec2Cost) + "</td></tr>")
+	}
+	formated.WriteString("</table><a href=\"http://trackit-client.apps.topaz-analytics.com/app/tags\">Ver mais</a><br />")
+	return formated.String()
+
+}
+
+// deprecated
 func formatTags(tagsValues tags.TagsValuesResponse, generalInformation *GeneralInformation) string {
 
 	ec2Application := make(map[string]float64)
@@ -239,35 +255,17 @@ func formatTags(tagsValues tags.TagsValuesResponse, generalInformation *GeneralI
 		for _, cost := range tags.Costs {
 			if cost.Item == "AmazonEC2" {
 				ec2Application[tag] = cost.Cost
-				generalInformation.TotalCostProductEc2 += cost.Cost
+				//generalInformation.TotalCostProductEc2 += cost.Cost
 			} else if cost.Item == "AmazonRDS" {
 				rdsApplication[tag] = cost.Cost
-				generalInformation.TotalCostProductRDS += cost.Cost
+				//generalInformation.TotalCostProductRDS += cost.Cost
 			}
 		}
 	}
-
-	keys := make([]string, 0, len(ec2Application))
-	for key := range ec2Application {
-		keys = append(keys, key)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return (ec2Application[keys[i]] + rdsApplication[keys[i]]) > (ec2Application[keys[j]] + rdsApplication[keys[j]])
-	})
-
-	var formated bytes.Buffer
-	formated.WriteString("<h2>More expensives usages for EC2 + RDS</h2><br /><br />These are applications are the most expensive applications regarding EC2 Product and RDS Product cost. <br /><br /><br />")
-	formated.WriteString("<table width=\"600px\" cellspacing=\"0\" cellpadding=\"5\"><tr><td><b>Application</b></td><td><b>Owner</b></td><td><b>EC2 Cost</b></td><td><b>RDS Cost</b></td></tr>")
-
-	for i := 0; i < 10 && len(keys) > i; i++ {
-		key := keys[i]
-		app, owner := splitApplicationOwner(key)
-
-		formated.WriteString("<tr><td>" + app + "</td><td>" + owner + "</td><td>$ " + fToS(ec2Application[key]) + "</td><td>$ " + fToS(rdsApplication[key]) + "</td></tr>")
-	}
-	formated.WriteString("</table><a href=\"http://trackit-client.apps.topaz-analytics.com/app/tags\">Ver mais</a><br />")
-	return formated.String()
+	return ""
 }
+
+// deprecated
 func splitApplicationOwner(key string) (string, string) {
 	splitedKey := strings.Split(key, ",")
 	if len(splitedKey) != 2 {
@@ -397,7 +395,7 @@ func getUsage(usages []tri.ReservedInstanceReport, productsPrice product.EC2Prod
 	}
 	formated.WriteString("</table><br /><a href=\"http://trackit-client.apps.topaz-analytics.com/app/usages\">Ver mais</a>")
 	formated.WriteString("<br /><sup>1</sup> The number of machines is an approximation based on total hours of use for each instance type and the time interval of this report.<br />")
-	formated.WriteString("<sup>2</sup> Using the machines estimation, we consider a <b>All Upfront</b> reservation machine from the same instance type, which <b>is not convertible</b> and does <b>not have</b> any <b>software preinstalled</b> from <b>US-East North Virginia</b> to calculate the reservation cost.<br /><br />")
+	formated.WriteString("<sup>2</sup> Using the machines estimation, we consider a <b>All Upfront</b> reservation machine from the same instance type, which <b>is not convertible</b> and does <b>not have</b> any <b>software preinstalled</b> from <b>US-East (N. Virginia)</b> to calculate the reservation cost.<br /><br />")
 
 	if suggestionsCount == 0 {
 		return "<h2>There are no suggestion to reserve EC2 instances</h2>This report doens't find a good replacement for usage of On Demand EC2 Instances.<br /><br />"

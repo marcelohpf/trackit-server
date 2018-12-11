@@ -123,7 +123,7 @@ func getTagsValues(request *http.Request, a routes.Arguments) (int, interface{})
 	return getTagsValuesWithParsedParams(request.Context(), parsedParams)
 }
 
-func GetGroupedTags(ctx context.Context, parsedParams TagsValuesQueryParams, user users.User, tx *sql.Tx) (int, TagsValuesResponse, error) {
+func GetGroupedTags(ctx context.Context, parsedParams Ec2TagsValuesQueryParams, user users.User, tx *sql.Tx) (int, ProductsTagsResponse, error) {
 
 	accountsAndIndexes, returnCode, err := es.GetAccountsAndIndexes(parsedParams.AccountList, user, tx, s3.IndexPrefixLineItem)
 	if err != nil {
@@ -131,14 +131,11 @@ func GetGroupedTags(ctx context.Context, parsedParams TagsValuesQueryParams, use
 	}
 	parsedParams.AccountList = accountsAndIndexes.Accounts
 	parsedParams.IndexList = accountsAndIndexes.Indexes
-	if getTagsValuesFilter(parsedParams.By).Filter == "error" {
-		return http.StatusBadRequest, nil, errors.New("Invalid filter: " + parsedParams.By)
-	}
-	returnCode, response := getGroupedTagsWithParsedParams(ctx, parsedParams)
+	returnCode, response, err := getEc2GroupedTagsWithParsedParams(ctx, parsedParams)
 	if returnCode == http.StatusOK {
-		return returnCode, response.(TagsValuesResponse), nil
+		return returnCode, response, nil
 	} else {
-		return returnCode, response.(TagsValuesResponse), errors.New("Failed to obtain tags group")
+		return returnCode, response, errors.New("Failed to obtain tags group")
 	}
 }
 
