@@ -42,7 +42,7 @@ func submitUnreservedEc2(suggestions []UnreservedSuggestion) {
 	} else {
 		c.Namespace = DATADOG_TRACKIT
 		for _, unreserved := range suggestions {
-			err := c.Gauge("ec2.unreserved.instances", float64(unreserved.Machines) /*, "instance_type:"+unreserved.InstanceType */, nil, 1)
+			err := c.Gauge("ec2.unreserved.instances", float64(unreserved.Machines), []string{"instance-type:" + unreserved.InstanceType}, 1)
 			if err != nil {
 				// warning
 			}
