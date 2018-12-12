@@ -36,6 +36,7 @@ func getLowUsedEc2(instances []ec2.InstanceReport, gi *GeneralInformation) []Low
 			prev.ComputationalPower += instance.Instance.NormalizationFactor
 			prev.Cost += cost
 			prev.Names = append(prev.Names, instance.Instance.Tags["Name"])
+			prev.InstanceType = instanceType
 
 			lowUsed[instanceType] = prev
 		}
@@ -71,7 +72,7 @@ func formatEc2Table(lowUsed []LowUsedInstance) string {
 
 func formatUnusedRdsInstances(instances []rds.InstanceReport, gi *GeneralInformation) string {
 	rds := getLowUsedRds(instances, gi)
-	return formatEc2Table(rds)
+	return formatRdsTable(rds)
 }
 
 func getLowUsedRds(instances []rds.InstanceReport, gi *GeneralInformation) []LowUsedInstance {
@@ -92,7 +93,8 @@ func getLowUsedRds(instances []rds.InstanceReport, gi *GeneralInformation) []Low
 			prev, _ := lowUsed[instanceType]
 			prev.ComputationalPower += instance.Instance.NormalizationFactor
 			prev.Cost += cost
-			prev.Names = append(prev.Names, instance.Instance.DBInstanceClass)
+			prev.Names = append(prev.Names, instance.Instance.DBInstanceIdentifier)
+			prev.InstanceType = instanceType
 			lowUsed[instanceType] = prev
 
 			gi.LowUsedRdsCost += cost

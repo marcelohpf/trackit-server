@@ -125,7 +125,6 @@ func proportionReserves(reportRI ri.ResponseReservedInstance, gi *GeneralInforma
 func formatUnreservedEc2(rRI ri.ResponseReservedInstance, ec2pp product.EC2ProductsPrice, startDate, endDate time.Time) string {
 	usages := rRI["Usage"]
 	suggestions := getUnreservedInstance(usages, ec2pp, startDate, endDate)
-	submitUnreservedEc2(suggestions)
 	return formatTableUnreservedEc2(suggestions)
 }
 

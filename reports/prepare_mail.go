@@ -130,8 +130,6 @@ func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.R
 
 	generalFormated := formatGeneral(generalInformation, begin, end)
 
-	submitDatadogMetrics(generalInformation)
-
 	//email += begin.Format("2006-01-02")
 
 	//email += "</h1></center>"
@@ -230,7 +228,7 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 	formated.WriteString("<sup>2</sup> Only instances that generate some cost report in the bill of this month is considered in this count, so it doens't overleap the number of active reserved instances.<br />")
 	formated.WriteString("<sup>3</sup> The proportion of computational power calculate the normalized usage of different instances types in hours during this interval of report.<br />")
 	formated.WriteString("<sup>4</sup> The distribution of instances by family regarding the sum of compute units (ECU) of all instances.<br />")
-	formated.WriteString("<sup>5</sup> Low used instances consider average CPU usage lower than 10% and no peaks of use over 60%.")
+	formated.WriteString("<sup>5</sup> Low used instances consider average CPU usage lower than 10% and no peaks of use over 60%.<br />")
 	formated.WriteString("<sup>6</sup> The instance and storage usage are used to calculate the RDS cost.<br /><br />")
 	return formated.String()
 }
