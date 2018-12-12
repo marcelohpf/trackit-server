@@ -259,7 +259,7 @@ func prepareResponseEc2Monthly(ctx context.Context, resEc2 *elastic.SearchResult
 	return instances, nil
 }
 
-func isInstanceUnused(instance Instance) bool {
+func IsInstanceUnused(instance Instance) bool {
 	average := instance.Stats.Cpu.Average
 	peak := instance.Stats.Cpu.Peak
 	if peak >= 60.0 {
@@ -274,7 +274,7 @@ func isInstanceUnused(instance Instance) bool {
 func prepareResponseEc2Unused(params Ec2UnusedQueryParams, instances []InstanceReport) (int, []InstanceReport, error) {
 	unusedInstances := make([]InstanceReport, 0)
 	for _, instance := range instances {
-		if isInstanceUnused(instance.Instance) {
+		if IsInstanceUnused(instance.Instance) {
 			unusedInstances = append(unusedInstances, instance)
 		}
 	}

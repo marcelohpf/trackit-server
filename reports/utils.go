@@ -4,6 +4,8 @@ import (
 	"golang.org/x/text/message"
 )
 
+const MONTHDAYS = 30.4365
+
 func formatGb(value float64) (string, float64) {
 	formats := []string{"B", "KB", "MB", "GB", "TB", "PT", "EB", "ZB"}
 

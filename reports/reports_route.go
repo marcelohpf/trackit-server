@@ -306,8 +306,7 @@ func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}
 	err = mail.SendHTMLMail(parsedParams.targetList, "AWS Usage Report", content, ctx)
 	if err != nil {
 		return http.StatusInternalServerError, err
-
 	}
 
-	return http.StatusOK, content
+	return http.StatusOK, map[string]string{"data": "email was sent with success"}
 }
