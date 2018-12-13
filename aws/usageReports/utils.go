@@ -45,6 +45,8 @@ const (
 	opTypeCreate = "create"
 
 	MaxAggregationSize = 0x7FFFFFFF
+	WEEKLY             = "weekly"
+	MONTHLY            = "monthly"
 )
 
 // AddDocToBulkProcessor adds a document in a bulk processor to ingest them in ES
@@ -136,13 +138,14 @@ func FetchRegionsList(ctx context.Context, sess *session.Session) ([]string, err
 	return res, nil
 }
 
-// CheckMonthlyReportExists checks if there is already a monthly report in ES based on the prefix.
+// CheckReportExists checks if there is already a monthly report in ES based on the prefix.
 // If there is already one it returns true, otherwise it returns false.
-func CheckMonthlyReportExists(ctx context.Context, date time.Time, aa taws.AwsAccount, prefix string) (bool, error) {
+func CheckReportExists(ctx context.Context, date time.Time, aa taws.AwsAccount, prefix, reportType string) (bool, error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	query := elastic.NewBoolQuery()
-	query = query.Filter(elastic.NewTermQuery("account", es.GetAccountIdFromRoleArn(aa.RoleArn)))
+	query = query.Filter(elastic.NewTermQuery("account", es.GetAccountId()))
 	query = query.Filter(elastic.NewTermQuery("reportDate", date))
+	query = query.Filter(elastic.NewTermQuery("ReportType", reportType))
 	index := es.IndexNameForUserId(aa.UserId, prefix)
 	result, err := es.Client.Search().Index(index).Size(1).Query(query).Do(ctx)
 	if err != nil {

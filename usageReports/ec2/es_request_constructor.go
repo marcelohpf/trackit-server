@@ -90,7 +90,12 @@ func GetElasticSearchEc2MonthlyParams(params Ec2QueryParams, client *elastic.Cli
 	if len(params.accountList) > 0 {
 		query = query.Filter(createQueryAccountFilterEc2(params.accountList))
 	}
-	query = query.Filter(elastic.NewTermQuery("reportType", "monthly"))
+
+	if params.reportType == "" {
+		params.reportType = "monthly"
+	}
+
+	query = query.Filter(elastic.NewTermQuery("reportType", params.reportType))
 	query = query.Filter(elastic.NewTermQuery("reportDate", params.date))
 	search := client.Search().Index(index).Size(0).Query(query)
 	search.Aggregation("accounts", elastic.NewTermsAggregation().Field("account").

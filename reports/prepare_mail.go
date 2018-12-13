@@ -102,7 +102,7 @@ type (
 	}
 )
 
-func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.ReservedInstance, s3info ts3.BucketsInfo, unusedInstances []ec2.InstanceReport, tagsValues tags.ProductsTagsResponse, costReport es.SimplifiedCostsDocument, ec2Instances []ec2.InstanceReport, rdsInstances []rds.InstanceReport, productsPrice product.EC2ProductsPrice, begin time.Time, end time.Time) (string, error) {
+func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.ReservedInstance, s3info ts3.BucketsInfo, tagsValues tags.ProductsTagsResponse, costReport es.SimplifiedCostsDocument, ec2Instances []ec2.InstanceReport, rdsInstances []rds.InstanceReport, productsPrice product.EC2ProductsPrice, begin time.Time, end time.Time) (string, error) {
 	email := `
 	<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 	<html xmlns="http://www.w3.org/1999/xhtml">
@@ -118,7 +118,7 @@ func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.R
 	generalInformation := &GeneralInformation{}
 	bucketsFormated := formatS3Buckets(s3info, generalInformation)
 	reservedFormated := formatReserved(reservedInstances, generalInformation, begin, end)
-	unusedFormated := formatUnusedEc2Instances(unusedInstances, generalInformation)
+	unusedFormated := formatUnusedEc2Instances(ec2Instances, generalInformation)
 	unusedRdsFormated := formatUnusedRdsInstances(rdsInstances, generalInformation)
 	tagsFormated := formatProductsUsageInstances(tagsValues, generalInformation)
 	instancesFormated := formatUnreservedEc2(reportRI, productsPrice, begin, end)
@@ -140,7 +140,7 @@ func formatEmail(reportRI ri.ResponseReservedInstance, reservedInstances []tri.R
 
 	email += reservedFormated
 
-	email += "<h2>Low Used Resources</h2><p>To calculate the low used resources, this report consider the <b>Average CPU</b> monthly usage lower than <b>10%</b> and the instance (RDS or EC2) with a peak of CPU usage lower than <b>60%</b>.</p><br />"
+	email += "<h2>Low Used Resources</h2><p>To calculate the low used resources, this report consider the <b>Average CPU</b> weekly usage lower than <b>10%</b> and the instance (RDS or EC2) with a peak of CPU usage lower than <b>60%</b>.</p><br />"
 	email += unusedFormated
 	email += unusedRdsFormated
 	email += "<br /><a href=\"http://trackit-client.apps.topaz-analytics.com/app/resources\">Ver mais</a><br /><br /><hr /><br /><br />"
@@ -167,7 +167,7 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 
 	formated.WriteString("<tr><td><b>Active EC2 Reserved Instances</b></td>")
 	formated.WriteString("<td>" + strconv.FormatInt(generalInformation.Reservations.TotalActiveRI, 10) + "</td></tr>")
-	formated.WriteString("<td><b>Expiring EC2 Reserved Instances on next month<sup>1</sup></b></td>")
+	formated.WriteString("<td><b>Expiring EC2 Reserved Instances on next week<sup>1</sup></b></td>")
 	formated.WriteString("<td>" + strconv.Itoa(generalInformation.Reservations.ReservesWillExpire) + "</td></tr>")
 	formated.WriteString("<tr><td><b>Active EC2 Reserved Instances Cost</b></td>")
 	formated.WriteString("<td>$ " + fToS(generalInformation.Reservations.TotalActiveRICost) + "</td></tr>")
@@ -192,7 +192,7 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 	}
 	formated.WriteString("</td></tr>")
 
-	formated.WriteString("<tr><td><b>Histogram of percentages of <br />the monthly average of CPU usage</b></td>")
+	formated.WriteString("<tr><td><b>Histogram of percentages of <br />the weekly average of CPU usage</b></td>")
 	formated.WriteString("<td>" + formatHistogram(generalInformation.HistogramUnusedEc2) + "</td></tr>")
 	formated.WriteString("<tr><td><b>Low Used EC2 Instances Cost <sup>5</sup></b></td>")
 	formated.WriteString("<td>$ " + fToS(generalInformation.TotalLowUsedInatancesEc2Cost) + "</td></tr>")
@@ -224,8 +224,8 @@ func formatGeneral(generalInformation *GeneralInformation, begin time.Time, end 
 	formated.WriteString("<td>$ " + fToS(generalInformation.LowUsedRdsCost) + "</td></tr>")
 	formated.WriteString("</table><br />")
 
-	formated.WriteString("<sup>1</sup> The total number of machines that will expire in the next month.<br />")
-	formated.WriteString("<sup>2</sup> Only instances that generate some cost report in the bill of this month is considered in this count, so it doens't overleap the number of active reserved instances.<br />")
+	formated.WriteString("<sup>1</sup> The total number of machines that will expire in the next week.<br />")
+	formated.WriteString("<sup>2</sup> Only instances that generate some cost report in the bill of this week is considered in this count, so it doens't overleap the number of active reserved instances.<br />")
 	formated.WriteString("<sup>3</sup> The proportion of computational power calculate the normalized usage of different instances types in hours during this interval of report.<br />")
 	formated.WriteString("<sup>4</sup> The distribution of instances by family regarding the sum of compute units (ECU) of all instances.<br />")
 	formated.WriteString("<sup>5</sup> Low used instances consider average CPU usage lower than 10% and no peaks of use over 60%.<br />")

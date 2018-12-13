@@ -30,6 +30,7 @@ type (
 		accountList []string
 		indexList   []string
 		date        time.Time
+		reportType  string
 	}
 
 	// RdsUnusedQueryParams will store the parsed query params
@@ -128,10 +129,11 @@ func getRdsUnusedInstances(request *http.Request, a routes.Arguments) (int, inte
 	}
 }
 
-func GetRdsQueryParams(accountList []string, date time.Time) RdsQueryParams {
+func GetRdsQueryParams(accountList []string, date time.Time, reportType string) RdsQueryParams {
 	return RdsQueryParams{
 		accountList: accountList,
 		date:        date,
+		reportType:  reportType,
 	}
 }
 

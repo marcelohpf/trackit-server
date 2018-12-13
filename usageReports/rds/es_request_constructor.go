@@ -87,10 +87,16 @@ func GetElasticSearchRdsDailyParams(params RdsQueryParams, client *elastic.Clien
 //	- If the index is not an index present in the ES, it will crash
 func GetElasticSearchRdsMonthlyParams(params RdsQueryParams, client *elastic.Client, index string) *elastic.SearchService {
 	query := elastic.NewBoolQuery()
+
 	if len(params.accountList) > 0 {
 		query = query.Filter(createQueryAccountFilterRds(params.accountList))
 	}
-	query = query.Filter(elastic.NewTermQuery("reportType", "monthly"))
+
+	if params.reportType == "" {
+		params.reportType = "monthly"
+	}
+
+	query = query.Filter(elastic.NewTermQuery("reportType", params.reportType))
 	query = query.Filter(elastic.NewTermQuery("reportDate", params.date))
 	search := client.Search().Index(index).Size(0).Query(query)
 	search.Aggregation("accounts", elastic.NewTermsAggregation().Field("account").

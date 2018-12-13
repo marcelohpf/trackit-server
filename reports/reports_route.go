@@ -200,13 +200,21 @@ func getAwsReportsDownload(request *http.Request, a routes.Arguments) (int, inte
 	return http.StatusOK, Report{buff.Bytes(), reportName}
 }
 
+func getWeekDates(date time.Time) (time.Time, time.Time) {
+	dayOfWeek := int(date.Weekday())
+	begin := time.Date(date.Year(), date.Month(), date.Day()-dayOfWeek-7, 0, 0, 0, 0, date.Location()).UTC()
+	end := time.Date(date.Year(), date.Month(), date.Day()-dayOfWeek-1, 23, 59, 59, 0, date.Location()).UTC()
+	return begin, end
+}
+
 // sendReportMail collect data from endpoints and format a e-mail to send to a target list
 func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}) {
 	user := a[users.AuthenticatedUser].(users.User)
 	tx := a[db.Transaction].(*sql.Tx)
+	begin, end := getWeekDates(a[routes.DateBeginQueryArg].(time.Time))
 	parsedParams := ReportEmailQueryParams{
-		begin:       a[routes.DateBeginQueryArg].(time.Time),
-		end:         a[routes.DateEndQueryArg].(time.Time),
+		begin:       begin,
+		end:         end,
 		targetList:  a[reportMailArgs[3]].([]string),
 		accountList: []string{},
 	}
@@ -233,18 +241,6 @@ func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}
 		return returnCode, err
 	}
 
-	// fetch Unused EC2 instances
-	ec2UnusedParams := ec2.Ec2UnusedQueryParams{
-		AccountList: parsedParams.accountList,
-		Date:        parsedParams.begin,
-		Count:       -1,
-	}
-
-	returnCode, unusedEc2, err := ec2.GetEc2UnusedData(ctx, ec2UnusedParams, user, tx)
-	if err != nil {
-		return returnCode, err
-	}
-
 	// fetch costs
 	costParams := costs.GetEsQueryParams(parsedParams.begin, parsedParams.end, []string{"product"}, parsedParams.accountList)
 	returnCode, esCost, err := costs.GetCostData(ctx, costParams, user, tx)
@@ -257,7 +253,7 @@ func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}
 	tagsParams := tags.Ec2TagsValuesQueryParams{
 		AccountList: parsedParams.accountList,
 		DateBegin:   parsedParams.begin,
-		DateEnd:     parsedParams.end.Add(time.Hour*time.Duration(23) + time.Minute*time.Duration(59) + time.Second*time.Duration(59)),
+		DateEnd:     parsedParams.end,
 	}
 
 	returnCode, tagsGroup, err := tags.GetGroupedTags(ctx, tagsParams, user, tx)
@@ -276,7 +272,7 @@ func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}
 	}
 
 	// fetch ec2 instances
-	ec2Params := ec2.GetEc2QueryParams(parsedParams.accountList, parsedParams.begin)
+	ec2Params := ec2.GetEc2QueryParams(parsedParams.accountList, parsedParams.begin, "weekly")
 
 	returnCode, ec2Instances, err := ec2.GetEc2Data(ctx, ec2Params, user, tx)
 	if err != nil {
@@ -284,7 +280,7 @@ func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}
 	}
 
 	// fetch rds instances
-	rdsParams := rds.GetRdsQueryParams(parsedParams.accountList, parsedParams.begin)
+	rdsParams := rds.GetRdsQueryParams(parsedParams.accountList, parsedParams.begin, "weekly")
 
 	returnCode, rdsInstances, err := rds.GetRdsData(ctx, rdsParams, user, tx)
 	if err != nil {
@@ -297,7 +293,7 @@ func sendReportMail(request *http.Request, a routes.Arguments) (int, interface{}
 		return http.StatusInternalServerError, err
 	}
 
-	content, err := formatEmail(ec2RiReport, ec2Ri, s3Cost, unusedEc2, tagsGroup, esCost, ec2Instances, rdsInstances, productsPrice, parsedParams.begin, parsedParams.end)
+	content, err := formatEmail(ec2RiReport, ec2Ri, s3Cost, tagsGroup, esCost, ec2Instances, rdsInstances, productsPrice, parsedParams.begin, parsedParams.end)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

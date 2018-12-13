@@ -54,6 +54,17 @@ type (
 	}
 )
 
+// getWeekHistoryDate return the begin and end of the last week
+func getWeekHistoryDate() (time.Time, time.Time) {
+	now := time.Now().UTC()
+
+	dayOfWeek := int(now.Weekday()) // go to the begin of week
+	start := time.Date(now.Year(), now.Month(), now.Day()-dayOfWeek-7, 0, 0, 0, 0, now.Location()).UTC()
+	// go to the last day of past week
+	end := time.Date(start.Year(), start.Month(), start.Day()+6, 23, 59, 59, 0, start.Location()).UTC()
+	return start, end
+}
+
 // getHistoryDate return the begin and the end date of the last month
 func getHistoryDate() (time.Time, time.Time) {
 	now := time.Now().UTC()
@@ -73,7 +84,7 @@ func makeElasticSearchRequestForCost(ctx context.Context, client *elastic.Client
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	index := es.IndexNameForUserId(aa.UserId, es.IndexPrefixLineItems)
 	query := elastic.NewBoolQuery()
-	query = query.Filter(elastic.NewTermQuery("usageAccountId", es.GetAccountIdFromRoleArn(aa.RoleArn)))
+	query = query.Filter(elastic.NewTermQuery("usageAccountId", es.GetAccountId()))
 	query = query.Filter(elastic.NewTermQuery("productCode", product))
 	query = query.Filter(elastic.NewRangeQuery("usageStartDate").
 		From(startDate).To(endDate))
@@ -148,6 +159,20 @@ func concatErrors(tabError []error) error {
 }
 
 // getInstanceInfo sort products and call history reports
+func getWeeklyInstancesInfo(ctx context.Context, aa aws.AwsAccount, startDate time.Time, endDate time.Time) error {
+	ec2Cost, ec2Err := getCostPerResource(ctx, aa, startDate, endDate, "AmazonEC2")
+	cloudWatchCost, cloudWatchErr := getCostPerResource(ctx, aa, startDate, endDate, "AmazonCloudWatch")
+	if ec2Err == nil && cloudWatchErr == nil {
+		ec2Err = ec2.PutEc2WeeklyReport(ctx, ec2Cost, cloudWatchCost, aa, startDate, endDate)
+	}
+	rdsCost, rdsErr := getCostPerResource(ctx, aa, startDate, endDate, "AmazonRDS")
+	if rdsErr == nil {
+		rdsErr = rds.PutRdsWeeklyReport(ctx, rdsCost, aa, startDate, endDate)
+	}
+	return concatErrors([]error{ec2Err, cloudWatchErr, rdsErr})
+}
+
+// getInstanceInfo sort products and call history reports
 func getInstancesInfo(ctx context.Context, aa aws.AwsAccount, startDate time.Time, endDate time.Time) error {
 	ec2Cost, ec2Err := getCostPerResource(ctx, aa, startDate, endDate, "AmazonEC2")
 	cloudWatchCost, cloudWatchErr := getCostPerResource(ctx, aa, startDate, endDate, "AmazonCloudWatch")
@@ -166,7 +191,7 @@ func getInstancesInfo(ctx context.Context, aa aws.AwsAccount, startDate time.Tim
 func checkBillingDataCompleted(ctx context.Context, startDate time.Time, endDate time.Time, aa aws.AwsAccount) (bool, error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	query := elastic.NewBoolQuery()
-	query = query.Filter(elastic.NewTermQuery("usageAccountId", es.GetAccountIdFromRoleArn(aa.RoleArn)))
+	query = query.Filter(elastic.NewTermQuery("usageAccountId", es.GetAccountId()))
 	query = query.Filter(elastic.NewTermQuery("invoiceId", ""))
 	query = query.Filter(elastic.NewRangeQuery("usageStartDate").
 		From(startDate).To(endDate))
@@ -185,6 +210,25 @@ func checkBillingDataCompleted(ctx context.Context, startDate time.Time, endDate
 	} else {
 		return false, nil
 	}
+}
+
+// FetchWeekHistoryInfos fetches billing data and stats of EC2 and RDS instances of the last week
+func FetchWeekHistoryInfos(ctx context.Context, aa aws.AwsAccount) error {
+	logger := jsonlog.LoggerFromContextOrDefault(ctx)
+	startDate, endDate := getWeekHistoryDate()
+	logger.Info("Starting history report", map[string]interface{}{
+		"awsAccountId": aa.Id,
+		"startDate":    startDate.Format("2006-01-02T15:04:05Z"),
+		"endDate":      endDate.Format("2006-01-02T15:04:05Z"),
+	})
+	//complete, err := checkBillingDataCompleted(ctx, startDate, endDate, aa)
+	//if err != nil {
+	//	return err
+	//} else if complete == false {
+	//	logger.Info("Billing data are not completed", nil)
+	//	return nil
+	//}
+	return getWeeklyInstancesInfo(ctx, aa, startDate, endDate)
 }
 
 // FetchHistoryInfos fetches billing data and stats of EC2 and RDS instances of the last month

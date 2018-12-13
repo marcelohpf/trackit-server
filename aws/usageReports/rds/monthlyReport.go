@@ -67,7 +67,7 @@ func fetchMonthlyInstancesList(ctx context.Context, creds *credentials.Credentia
 }
 
 // getRdsMetrics gets credentials, accounts and region to fetch RDS instances stats
-func getRdsMetrics(ctx context.Context, instancesList []utils.CostPerResource, aa taws.AwsAccount, startDate, endDate time.Time) ([]InstanceReport, error) {
+func getRdsMetrics(ctx context.Context, instancesList []utils.CostPerResource, aa taws.AwsAccount, startDate, endDate time.Time, period string) ([]InstanceReport, error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	creds, err := taws.GetTemporaryCredentials()
 	if err != nil {
@@ -103,7 +103,7 @@ func getRdsMetrics(ctx context.Context, instancesList []utils.CostPerResource, a
 		instances = append(instances, InstanceReport{
 			Account:    account,
 			ReportDate: startDate,
-			ReportType: "monthly",
+			ReportType: period,
 			Instance:   instance,
 		})
 	}
@@ -137,14 +137,14 @@ func PutRdsMonthlyReport(ctx context.Context, rdsCost []utils.CostPerResource, a
 		logger.Info("No RDS instances found in billing data.", nil)
 		return nil
 	}
-	already, err := utils.CheckMonthlyReportExists(ctx, startDate, aa, IndexPrefixRDSReport)
+	already, err := utils.CheckReportExists(ctx, startDate, aa, IndexPrefixRDSReport, utils.MONTHLY)
 	if err != nil {
 		return err
 	} else if already {
 		logger.Info("There is already an RDS monthly report", nil)
 		return nil
 	}
-	instances, err := getRdsMetrics(ctx, costInstance, aa, startDate, endDate)
+	instances, err := getRdsMetrics(ctx, costInstance, aa, startDate, endDate, utils.MONTHLY)
 	if err != nil {
 		return err
 	}

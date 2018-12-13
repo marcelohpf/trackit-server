@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/trackit/trackit-server/aws"
+	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/models"
 	"github.com/trackit/trackit-server/users"
 )
@@ -61,9 +62,14 @@ func (ai *AccountsAndIndexes) addIndex(index string) {
 	ai.Indexes = append(ai.Indexes, index)
 }
 
+func GetAccountId() string {
+	return config.MasterAwsAccount
+}
+
 // GetAccountIdFromRoleArn takes a role arn string and returns the account ID
 // or an empty string if the role arn is not valid
 func GetAccountIdFromRoleArn(roleArn string) string {
+	// deprecated
 	arnElems := strings.Split(roleArn, ":")
 	if len(arnElems) != 6 {
 		return ""
@@ -89,7 +95,7 @@ func getAllAccountsAndIndexes(user users.User, tx *sql.Tx, indexPrefix string) (
 	}
 	// Add all the user accounts
 	for _, userAccount := range userAccounts {
-		accountId := GetAccountIdFromRoleArn(userAccount.RoleArn)
+		accountId := GetAccountId()
 		if accountId != "" {
 			accountsAndIndexes.addAccount(accountId)
 			accountsAndIndexes.addIndex(IndexNameForUserId(userAccount.UserID, indexPrefix))
@@ -97,7 +103,7 @@ func getAllAccountsAndIndexes(user users.User, tx *sql.Tx, indexPrefix string) (
 	}
 	// Add all the non duplicate shared accounts
 	for _, sharedAccount := range sharedAccounts {
-		accountId := GetAccountIdFromRoleArn(sharedAccount.RoleArn)
+		accountId := GetAccountId()
 		// Do not add the account if the user already own the same account
 		if accountId != "" && accountsAndIndexes.isAccountDuplicate(accountId) == false {
 			accountsAndIndexes.addAccount(accountId)
@@ -142,7 +148,7 @@ func GetAccountsAndIndexes(accountList []string, user users.User, tx *sql.Tx, in
 		found_match := false
 		// Try to match in priority with the user's accounts
 		for _, userAccount := range userAccounts {
-			accountId := GetAccountIdFromRoleArn(userAccount.RoleArn)
+			accountId := GetAccountId()
 			if accountId != "" && accountId == account {
 				found_match = true
 				accountsAndIndexes.addAccount(account)
@@ -152,7 +158,7 @@ func GetAccountsAndIndexes(accountList []string, user users.User, tx *sql.Tx, in
 		// If no match is found in the user's accounts, try in the shared accounts
 		if found_match == false {
 			for _, sharedAccount := range sharedAccounts {
-				accountId := GetAccountIdFromRoleArn(sharedAccount.RoleArn)
+				accountId := GetAccountId()
 				if accountId != "" && accountId == account {
 					found_match = true
 					if accountsAndIndexes.isAccountDuplicate(accountId) == false {

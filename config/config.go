@@ -116,6 +116,8 @@ var (
 	AnomalyEmailingMinLevel int
 	// MasterEmail is the e-mail of master account and any other account created by LDAP will be asssociate with it
 	MasterEmail string
+	// MasterAwsAccount is the number of master aws account to be used together with master e-mail
+	MasterAwsAccount string
 	// Bucket is the name of single bucket for master account bill repository
 	Bucket string
 	// SizePassword define the size of random passwords generated. It should be a numberlower than 32
@@ -169,6 +171,7 @@ func init() {
 	flag.StringVar(&AnomalyDetectionPrettyLevels, "anomaly-detection-pretty-levels", "low,medium,high,critical", "Pretty names of the levels.")
 	flag.IntVar(&AnomalyEmailingMinLevel, "anomaly-emailing-min-level", 2, "Minimum level for the mail to be sent.")
 	flag.StringVar(&MasterEmail, "master-email", "", "The e-mail for an master account.")
+	flag.StringVar(&MasterAwsAccount, "master-aws-account", "", "The aws account number to the master account.")
 	flag.StringVar(&Bucket, "bucket", "", "The name of master account bucket.")
 	flag.IntVar(&SizePassword, "password-size", 10, "Define the size of random passwords generated.")
 	flag.Parse()

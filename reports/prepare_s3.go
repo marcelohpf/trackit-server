@@ -39,8 +39,8 @@ func prepareS3Buckets(buckets ts3.BucketsInfo, generalInformation *GeneralInform
 		})
 	}
 
-	generalInformation.TotalDailyUsageS3 = generalInformation.TotalUsageS3 / MONTHDAYS
-	generalInformation.TotalDailyCostS3 = generalInformation.TotalCostS3 / MONTHDAYS
+	generalInformation.TotalDailyUsageS3 = generalInformation.TotalUsageS3 / WEEKDAYS
+	generalInformation.TotalDailyCostS3 = generalInformation.TotalCostS3 / WEEKDAYS
 
 	return instanceBuckets
 }
@@ -55,7 +55,7 @@ func formatS3Table(instanceBuckets []S3Product) string {
 
 	formated.WriteString("<h2>Expensive S3 Buckets</h2>")
 	formated.WriteString("These are the top five more expensive buckets used in the time interval of this report.")
-	formated.WriteString("<table width=\"600px\" cellspacing=\"0\" cellpadding=\"5\"><tr><td></td><td><b>Name</b></td><td><b>Total Cost</b></td><td><b>Value (GB/$)</b></td><td><b>Month Size</b></td></tr>")
+	formated.WriteString("<table width=\"600px\" cellspacing=\"0\" cellpadding=\"5\"><tr><td></td><td><b>Name</b></td><td><b>Total Cost</b></td><td><b>Value (GB/$)</b></td><td><b>Week Size</b></td></tr>")
 
 	for i := 0; i < 5 && len(instanceBuckets) > i; i++ {
 		formated.WriteString("<tr><td>" + strconv.Itoa(i+1) + "</td>")

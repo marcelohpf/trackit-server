@@ -54,7 +54,7 @@ func makeElasticSearchCostRequest(ctx context.Context, params RdsQueryParams) (*
 			return nil, http.StatusOK, errors.GetErrorMessage(ctx, err)
 		} else if err.(*elastic.Error).Details.Type == "search_phase_execution_exception" {
 			l.Error("Error while getting data from ES", map[string]interface{}{
-				"type": fmt.Sprintf("%T", err),
+				"type":  fmt.Sprintf("%T", err),
 				"error": err,
 			})
 		} else {
@@ -90,7 +90,7 @@ func makeElasticSearchRdsDailyRequest(ctx context.Context, parsedParams RdsQuery
 			return nil, http.StatusOK, errors.GetErrorMessage(ctx, err)
 		} else if err.(*elastic.Error).Details.Type == "search_phase_execution_exception" {
 			l.Error("Error while getting data from ES", map[string]interface{}{
-				"type": fmt.Sprintf("%T", err),
+				"type":  fmt.Sprintf("%T", err),
 				"error": err,
 			})
 		} else {
@@ -126,7 +126,7 @@ func makeElasticSearchRdsMonthlyRequest(ctx context.Context, parsedParams RdsQue
 			return nil, http.StatusOK, errors.GetErrorMessage(ctx, err)
 		} else if err.(*elastic.Error).Details.Type == "search_phase_execution_exception" {
 			l.Error("Error while getting data from ES", map[string]interface{}{
-				"type": fmt.Sprintf("%T", err),
+				"type":  fmt.Sprintf("%T", err),
 				"error": err,
 			})
 		} else {
@@ -193,7 +193,7 @@ func GetRdsData(ctx context.Context, parsedParams RdsQueryParams, user users.Use
 
 // GetRdsUnusedData gets RDS reports and parse them based on query params to have an array of unused instances
 func GetRdsUnusedData(ctx context.Context, params RdsUnusedQueryParams, user users.User, tx *sql.Tx) (int, []rds.InstanceReport, error) {
-	returnCode, instances, err := GetRdsData(ctx, RdsQueryParams{params.accountList, nil, params.date}, user, tx)
+	returnCode, instances, err := GetRdsData(ctx, RdsQueryParams{params.accountList, nil, params.date, ""}, user, tx)
 	if err != nil {
 		return returnCode, nil, err
 	}

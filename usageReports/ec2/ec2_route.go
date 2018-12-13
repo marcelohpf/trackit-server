@@ -30,6 +30,7 @@ type (
 		accountList []string
 		indexList   []string
 		date        time.Time
+		reportType  string
 	}
 
 	// Ec2UnusedQueryParams will store the parsed query params
@@ -128,10 +129,11 @@ func getEc2UnusedInstances(request *http.Request, a routes.Arguments) (int, inte
 	}
 }
 
-func GetEc2QueryParams(accountList []string, date time.Time) Ec2QueryParams {
+func GetEc2QueryParams(accountList []string, date time.Time, reportType string) Ec2QueryParams {
 	return Ec2QueryParams{
 		accountList: accountList,
 		date:        date,
+		reportType:  reportType,
 	}
 
 }

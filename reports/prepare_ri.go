@@ -16,7 +16,7 @@ import (
 
 func formatReserved(ris []tri.ReservedInstance, gi *GeneralInformation, startDate, endDate time.Time) string {
 
-	nextReport := time.Date(endDate.Year(), endDate.Month()+2, 0, 23, 59, 59, 999999999, time.Local)
+	nextReport := time.Date(endDate.Year(), endDate.Month(), endDate.Day()+14, 23, 59, 59, 999999999, time.Local) // end of next week
 
 	reservations := riResume(ris, nextReport)
 	gi.Reservations = reservations

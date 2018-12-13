@@ -213,7 +213,7 @@ func GetS3CostData(ctx context.Context, parsedParams EsQueryParams, user users.U
 func GetEsQueryParams(begin time.Time, end time.Time, accountList []string) EsQueryParams {
 	return EsQueryParams{
 		dateBegin:   begin,
-		dateEnd:     end.Add(time.Hour*time.Duration(23) + time.Minute*time.Duration(59) + time.Second*time.Duration(59)),
+		dateEnd:     end,
 		accountList: accountList,
 	}
 }

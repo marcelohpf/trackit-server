@@ -71,7 +71,7 @@ func fetchMonthlyInstancesList(ctx context.Context, creds *credentials.Credentia
 }
 
 // getEc2Metrics gets credentials, accounts and region to fetch EC2 instances stats
-func fetchMonthlyInstancesStats(ctx context.Context, instances []utils.CostPerResource, aa taws.AwsAccount, startDate, endDate time.Time) ([]InstanceReport, error) {
+func fetchMonthlyInstancesStats(ctx context.Context, instances []utils.CostPerResource, aa taws.AwsAccount, startDate, endDate time.Time, period string) ([]InstanceReport, error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	creds, err := taws.GetTemporaryCredentials()
 	if err != nil {
@@ -107,7 +107,7 @@ func fetchMonthlyInstancesStats(ctx context.Context, instances []utils.CostPerRe
 		instancesList = append(instancesList, InstanceReport{
 			Account:    account,
 			ReportDate: startDate,
-			ReportType: "monthly",
+			ReportType: period,
 			Instance:   instance,
 		})
 	}
@@ -168,14 +168,14 @@ func PutEc2MonthlyReport(ctx context.Context, ec2Cost, cloudWatchCost []utils.Co
 		logger.Info("No EC2 instances found in billing data.", nil)
 		return nil
 	}
-	already, err := utils.CheckMonthlyReportExists(ctx, startDate, aa, IndexPrefixEC2Report)
+	already, err := utils.CheckReportExists(ctx, startDate, aa, IndexPrefixEC2Report, utils.MONTHLY)
 	if err != nil {
 		return err
 	} else if already {
 		logger.Info("There is already an EC2 monthly report", nil)
 		return nil
 	}
-	instances, err := fetchMonthlyInstancesStats(ctx, costInstance, aa, startDate, endDate)
+	instances, err := fetchMonthlyInstancesStats(ctx, costInstance, aa, startDate, endDate, utils.MONTHLY)
 	if err != nil {
 		return err
 	}

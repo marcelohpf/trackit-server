@@ -175,7 +175,7 @@ func GetEc2Data(ctx context.Context, parsedParams Ec2QueryParams, user users.Use
 
 // GetEc2UnusedData gets EC2 reports and parse them based on query params to have an array of unused instances
 func GetEc2UnusedData(ctx context.Context, params Ec2UnusedQueryParams, user users.User, tx *sql.Tx) (int, []InstanceReport, error) {
-	returnCode, instances, err := GetEc2Data(ctx, Ec2QueryParams{params.AccountList, nil, params.Date}, user, tx)
+	returnCode, instances, err := GetEc2Data(ctx, Ec2QueryParams{params.AccountList, nil, params.Date, ""}, user, tx)
 	if err != nil {
 		return returnCode, nil, err
 	}

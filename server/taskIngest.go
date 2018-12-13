@@ -75,7 +75,7 @@ func ingestBillingDataForBillRepository(ctx context.Context, aaId, brId int) (er
 		}
 	}()
 	if tx, err = db.Db.BeginTx(ctx, nil); err != nil {
-	} else if br, err = getBillRespository(ctx, aaId, brId, tx); err != nil {
+	} else if aa, br, err = getBillRespository(ctx, aaId, brId, tx); err != nil {
 	} else if updateId, err = registerUpdate(db.Db, br); err != nil {
 	} else if latestManifest, err = s3.UpdateReport(ctx, aa, br); err != nil {
 		if billError, castok := err.(awserr.Error); castok {
@@ -99,7 +99,7 @@ func ingestBillingDataForBillRepository(ctx context.Context, aaId, brId int) (er
 
 // getBillRepository search for the bill repository using the AwsAccount and
 // Bill Repository ID or use the Master Trackit Account
-func getBillRespository(ctx context.Context, aaId, brId int, tx *sql.Tx) (s3.BillRepository, error) {
+func getBillRespository(ctx context.Context, aaId, brId int, tx *sql.Tx) (aws.AwsAccount, s3.BillRepository, error) {
 	var user users.User
 	var aas []aws.AwsAccount
 	var aa aws.AwsAccount
@@ -111,14 +111,14 @@ func getBillRespository(ctx context.Context, aaId, brId int, tx *sql.Tx) (s3.Bil
 		} else if aas, err = aws.GetAwsAccountsFromUser(user, tx); err != nil || len(aas) == 0 {
 		} else if brs, err = s3.GetBillRepositoriesForAwsAccount(aas[0], tx); err != nil || len(brs) == 0 {
 		} else {
-			return brs[0], nil
+			return aas[0], brs[0], nil
 		}
 	} else if aa, err = aws.GetAwsAccountWithId(aaId, tx); err != nil {
 	} else if br, err = s3.GetBillRepositoryForAwsAccountById(aa, brId, tx); err != nil {
 	} else {
-		return br, nil
+		return aa, br, nil
 	}
-	return br, err
+	return aa, br, err
 }
 
 func registerUpdate(db *sql.DB, br s3.BillRepository) (int64, error) {

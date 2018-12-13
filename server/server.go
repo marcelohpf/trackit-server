@@ -91,7 +91,7 @@ var sched periodic.Scheduler
 
 func schedulePeriodicTasks() {
 	sched.Register(taskIngestDue, 10*time.Minute, "ingest-due-updates")
-	sched.Register(taskProcessAccount, 10*time.Minute, "process-account")
+	sched.Register(taskProcessAccount, 15*time.Minute, "process-account")
 	sched.Register(taskIngest, 10*time.Minute, "ingest-update")
 	sched.Start()
 }
