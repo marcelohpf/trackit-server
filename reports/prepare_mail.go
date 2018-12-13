@@ -247,7 +247,7 @@ func formatProductsUsageInstances(tagsValues tags.ProductsTagsResponse, generalI
 	formated.WriteString("<h2>More expensives usages for EC2</h2><br /><br />These are applications are the most expensive applications regarding EC2 Product cost. <br /><br /><br />")
 	formated.WriteString("<table width=\"600px\" cellspacing=\"0\" cellpadding=\"5\"><tr><td></td><td><b>Application</b></td><td><b>Owner</b></td><td><b>EC2 Cost</b></td></tr>")
 
-	for i := 0; i < 10 && len(tagsValues) > i; i++ {
+	for i := 0; i < 7 && len(tagsValues) > i; i++ {
 		item := tagsValues[i]
 
 		formated.WriteString("<tr><td>" + strconv.Itoa(i+1) + "</td>")

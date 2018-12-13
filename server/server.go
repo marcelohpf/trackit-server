@@ -60,6 +60,7 @@ var tasks = map[string]func(context.Context) error{
 	"process-account-plugins": taskProcessAccountPlugins,
 	"anomalies-detection":     taskAnomaliesDetection,
 	"check-user-entitlement":  taskCheckEntitlement,
+	"process-history":         taskProcessHistoryAccount,
 	"setup-master-account":    taskSetupMasterAccount,
 }
 
@@ -91,7 +92,8 @@ var sched periodic.Scheduler
 
 func schedulePeriodicTasks() {
 	sched.Register(taskIngestDue, 10*time.Minute, "ingest-due-updates")
-	sched.Register(taskProcessAccount, 15*time.Minute, "process-account")
+	sched.Register(taskProcessHistoryAccount, 30*time.Minute, "process-history")
+	sched.Register(taskProcessAccount, 30*time.Minute, "process-account")
 	sched.Register(taskIngest, 10*time.Minute, "ingest-update")
 	sched.Start()
 }

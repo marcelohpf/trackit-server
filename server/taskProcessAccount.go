@@ -24,9 +24,7 @@ import (
 
 	"github.com/trackit/jsonlog"
 	"github.com/trackit/trackit-server/aws"
-	"github.com/trackit/trackit-server/aws/ri"
 	"github.com/trackit/trackit-server/aws/usageReports/ec2"
-	"github.com/trackit/trackit-server/aws/usageReports/history"
 	"github.com/trackit/trackit-server/aws/usageReports/rds"
 	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/db"
@@ -174,51 +172,12 @@ func processAccountRDS(ctx context.Context, aa aws.AwsAccount) error {
 	return err
 }
 
-// processAccountEC2Reserves processes the EC2 reserved data for an AwsAccount
-func processAccountEC2Reserves(ctx context.Context, aa aws.AwsAccount) error {
-	err := ri.FetchReservedInstances(ctx, aa)
-	if err != nil {
-		logger := jsonlog.LoggerFromContextOrDefault(ctx)
-		logger.Error("Failed to ingest EC2 reserved instances", map[string]interface{}{
-			"awsAccountId": aa.Id,
-			"error":        err.Error(),
-		})
-	}
-	return err
-}
-
 // processAccountEC2 processes the EC2 instances data for an AwsAccount
 func processAccountEC2(ctx context.Context, aa aws.AwsAccount) error {
 	err := ec2.FetchDailyInstancesStats(ctx, aa)
 	if err != nil {
 		logger := jsonlog.LoggerFromContextOrDefault(ctx)
 		logger.Error("Failed to ingest EC2 data.", map[string]interface{}{
-			"awsAccountId": aa.Id,
-			"error":        err.Error(),
-		})
-	}
-	return err
-}
-
-// processAccountHistoryRDS processes EC2 and RDS data with billing data for an AwsAccount
-func processAccountWeekHistory(ctx context.Context, aa aws.AwsAccount) error {
-	err := history.FetchWeekHistoryInfos(ctx, aa)
-	if err != nil {
-		logger := jsonlog.LoggerFromContextOrDefault(ctx)
-		logger.Error("Failed to ingest History data.", map[string]interface{}{
-			"awsAccountId": aa.Id,
-			"error":        err.Error(),
-		})
-	}
-	return err
-}
-
-// processAccountHistoryRDS processes EC2 and RDS data with billing data for an AwsAccount
-func processAccountHistory(ctx context.Context, aa aws.AwsAccount) error {
-	err := history.FetchHistoryInfos(ctx, aa)
-	if err != nil {
-		logger := jsonlog.LoggerFromContextOrDefault(ctx)
-		logger.Error("Failed to ingest History data.", map[string]interface{}{
 			"awsAccountId": aa.Id,
 			"error":        err.Error(),
 		})
