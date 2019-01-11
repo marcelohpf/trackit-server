@@ -78,9 +78,18 @@ func createMasterAwsAccount(user users.User, ctx context.Context, tx *sql.Tx) er
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	var awsAccount aws.AwsAccount
 	if err == sql.ErrNoRows || len(awsAccounts) == 0 {
+
+		var role string
+
+		if config.RoleArn == "" {
+			role = "no role"
+		} else {
+			role = config.RoleArn
+		}
+
 		awsAccount = aws.AwsAccount{
 			UserId:   user.Id,
-			RoleArn:  "no role",
+			RoleArn:  role,
 			Pretty:   "tfg-trackit",
 			External: "",
 			Payer:    true,

@@ -22,8 +22,8 @@ import (
 	"errors"
 	"fmt"
 
+	ldap "github.com/jtblin/go-ldap-client"
 	"github.com/trackit/jsonlog"
-  ldap "github.com/jtblin/go-ldap-client"
 
 	"github.com/trackit/trackit-server/config"
 	"github.com/trackit/trackit-server/models"
@@ -40,19 +40,19 @@ var (
 // User is a user of the platform. It is different from models.User which is
 // the database representation of a User.
 type User struct {
-	Id                      int    `json:"id"`
-	Email                   string `json:"email"`
-	NextExternal            string `json:"-"`
-	ParentId                *int   `json:"parentId,omitempty"`
-	AwsCustomerEntitlement	bool   `json:aws_customer_entitlement`
+	Id                     int    `json:"id"`
+	Email                  string `json:"email"`
+	NextExternal           string `json:"-"`
+	ParentId               *int   `json:"parentId,omitempty"`
+	AwsCustomerEntitlement bool   `json:aws_customer_entitlement`
 }
 
 // CreateUserWithPassword creates a user with an email and a password. A nil
 // error indicates a success.
 func CreateUserWithPassword(ctx context.Context, db models.XODB, email string, password string, customerIdentifier string) (User, error) {
 	dbUser := models.User{
-		Email: email,
-		AwsCustomerIdentifier: customerIdentifier,
+		Email:                  email,
+		AwsCustomerIdentifier:  customerIdentifier,
 		AwsCustomerEntitlement: true,
 	}
 	return saveUserWithPassword(ctx, db, password, dbUser)
@@ -61,13 +61,29 @@ func CreateUserWithPassword(ctx context.Context, db models.XODB, email string, p
 // CreateUserWithParentIdLDAP create a user with email, password and a parent
 // id. A nil error indicates a success.
 func CreateUserWithParentIdLDAP(ctx context.Context, db models.XODB, email string, password string) (User, error) {
-	dbUser := models.User{
-		Email: email,
-		AwsCustomerIdentifier: "",
-		AwsCustomerEntitlement: true,
-		ParentUserID: sql.NullInt64{int64(1), true},
+
+	if config.MasterEmail != "" {
+
+		dbMasterUser, err := models.UserByEmail(db, config.MasterEmail)
+
+		if err != nil {
+			return User{}, err
+		}
+
+		dbUser := models.User{
+			Email:                  email,
+			AwsCustomerIdentifier:  "",
+			AwsCustomerEntitlement: true,
+			ParentUserID:           sql.NullInt64{int64(dbMasterUser.ID), true},
+		}
+
+		return saveUserWithPassword(ctx, db, password, dbUser)
+
+	} else {
+		logger := jsonlog.LoggerFromContextOrDefault(ctx)
+		logger.Error("A master e-mail wasn't configured", nil)
+		return User{}, errors.New("Master e-mail not configured")
 	}
-	return saveUserWithPassword(ctx, db, password, dbUser)
 }
 
 // saveUserWithPassword save a object user and handler the erros
@@ -86,14 +102,13 @@ func saveUserWithPassword(ctx context.Context, db models.XODB, password string, 
 	return UserFromDbUser(dbUser), err
 }
 
-
 // CreateUserWithParent creates a viewer user with an email and a parent. A nil
 // error indicates a success.
 func CreateUserWithParent(ctx context.Context, db models.XODB, email string, parent User) (User, string, error) {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	dbUser := models.User{
-		Email:        email,
-		ParentUserID: sql.NullInt64{int64(parent.Id), true},
+		Email:                  email,
+		ParentUserID:           sql.NullInt64{int64(parent.Id), true},
 		AwsCustomerEntitlement: true,
 	}
 	var user User
@@ -238,17 +253,17 @@ func getLDAPAuthenticatedUser(user, password string) (bool, error) {
 
 	// It should read configs from config a file or environment variables
 	client := &ldap.LDAPClient{
-				Base:               config.LDAPBase,
-				Host:               config.LDAPHost,
-				ServerName:         config.LDAPServerName,
-				Port:               config.LDAPPort,
-				UseSSL:             config.LDAPUseSSL,
-				InsecureSkipVerify: config.LDAPInsecureSkipVerify,
-				BindDN:             fmt.Sprintf(config.LDAPBindDNFormat, user),
-				BindPassword:       password,
-				UserFilter:         config.LDAPUserFilter,
-				GroupFilter:				config.LDAPGroupFilter,
-				Attributes:         []string{"uid", "gecos", "cn"},
+		Base:               config.LDAPBase,
+		Host:               config.LDAPHost,
+		ServerName:         config.LDAPServerName,
+		Port:               config.LDAPPort,
+		UseSSL:             config.LDAPUseSSL,
+		InsecureSkipVerify: config.LDAPInsecureSkipVerify,
+		BindDN:             fmt.Sprintf(config.LDAPBindDNFormat, user),
+		BindPassword:       password,
+		UserFilter:         config.LDAPUserFilter,
+		GroupFilter:        config.LDAPGroupFilter,
+		Attributes:         []string{"uid", "gecos", "cn"},
 	}
 
 	ok, _, err := client.Authenticate(user, password)
@@ -276,6 +291,9 @@ func GetLDAPUserWithEmailAndPassword(ctx context.Context, db models.XODB, email 
 		user, err := GetUserWithEmail(ctx, db, email)
 		if err == ErrUserNotFound {
 			user, err = CreateUserWithParentIdLDAP(ctx, db, email, password)
+			if err != nil {
+				return User{}, err
+			}
 		}
 		return user, nil
 	} else {

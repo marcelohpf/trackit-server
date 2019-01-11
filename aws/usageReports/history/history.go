@@ -216,7 +216,7 @@ func checkBillingDataCompleted(ctx context.Context, startDate time.Time, endDate
 func FetchWeekHistoryInfos(ctx context.Context, aa aws.AwsAccount) error {
 	logger := jsonlog.LoggerFromContextOrDefault(ctx)
 	startDate, endDate := getWeekHistoryDate()
-	logger.Info("Starting history report", map[string]interface{}{
+	logger.Info("Starting weekly history report", map[string]interface{}{
 		"awsAccountId": aa.Id,
 		"startDate":    startDate.Format("2006-01-02T15:04:05Z"),
 		"endDate":      endDate.Format("2006-01-02T15:04:05Z"),

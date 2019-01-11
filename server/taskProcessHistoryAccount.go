@@ -71,8 +71,8 @@ func ingestHistoryDataForAccount(ctx context.Context, aaId int) (err error) {
 	} else {
 		riErr := processAccountEC2Reserves(ctx, aa)
 		wHistoryErr := processAccountWeekHistory(ctx, aa)
-		historyErr := processAccountHistory(ctx, aa)
-		updateAccountProcessingCompletion(ctx, aaId, db.Db, updateId, nil, nil, nil, historyErr, riErr, wHistoryErr)
+		//historyErr := processAccountHistory(ctx, aa)
+		updateAccountProcessingCompletion(ctx, aaId, db.Db, updateId, nil, nil, nil, nil, riErr, wHistoryErr)
 	}
 	if err != nil {
 		updateAccountProcessingCompletion(ctx, aaId, db.Db, updateId, err, nil, nil, nil, nil, nil)
@@ -103,19 +103,6 @@ func processAccountWeekHistory(ctx context.Context, aa aws.AwsAccount) error {
 	if err != nil {
 		logger := jsonlog.LoggerFromContextOrDefault(ctx)
 		logger.Error("Failed to ingest week History data.", map[string]interface{}{
-			"awsAccountId": aa.Id,
-			"error":        err.Error(),
-		})
-	}
-	return err
-}
-
-// processAccountHistoryRDS processes EC2 and RDS data with billing data for an AwsAccount
-func processAccountHistory(ctx context.Context, aa aws.AwsAccount) error {
-	err := history.FetchHistoryInfos(ctx, aa)
-	if err != nil {
-		logger := jsonlog.LoggerFromContextOrDefault(ctx)
-		logger.Error("Failed to ingest History data.", map[string]interface{}{
 			"awsAccountId": aa.Id,
 			"error":        err.Error(),
 		})

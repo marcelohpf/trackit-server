@@ -16,8 +16,10 @@ package aws
 
 import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	//"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	//"github.com/trackit/trackit-server/awsSession"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/trackit/trackit-server/awsSession"
+
+	"github.com/trackit/trackit-server/config"
 )
 
 // GetTemporaryCredentials gets temporary credentials in a client's AWS account
@@ -27,7 +29,13 @@ func GetTemporaryCredentials() (*credentials.Credentials, error) {
 	//creds := stscreds.NewCredentials(awsSession.Session, aa.RoleArn, func(arp *stscreds.AssumeRoleProvider) {
 	//	arp.ExternalID = &aa.External
 	//})
-	creds := credentials.NewEnvCredentials()
+	var creds *credentials.Credentials
+
+	if config.RoleArn != "" {
+		creds = stscreds.NewCredentials(awsSession.Session, config.RoleArn)
+	} else {
+		creds = credentials.NewEnvCredentials()
+	}
 	_, err := creds.Get()
 	if err != nil {
 		return nil, err

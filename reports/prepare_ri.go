@@ -59,7 +59,13 @@ func getRIProducts(reservedInstances []tri.ReservedInstance, nextReport time.Tim
 				expireReserveDate[instance.InstanceType] = make(map[string]int)
 			}
 
-			expireReserveDate[instance.InstanceType][instance.EndDate.Format("2006-01-02")] += 1
+			dateFormated := instance.EndDate.UTC().Format("2006-01-02")
+			location, err := time.LoadLocation("America/Sao_Paulo")
+			if err == nil {
+				dateFormated = instance.EndDate.UTC().In(location).Format("2006-01-02")
+			}
+
+			expireReserveDate[instance.InstanceType][dateFormated] += 1
 		}
 	}
 
