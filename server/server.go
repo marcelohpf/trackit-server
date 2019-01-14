@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"time"
+	//"time"
 
 	"github.com/satori/go.uuid"
 	"github.com/trackit/jsonlog"
@@ -76,7 +76,11 @@ func main() {
 		BackendId string `json:"backendId"`
 	}{backendId})
 	if task, ok := tasks[config.Task]; ok {
-		task(ctx)
+		if err := task(ctx); err != nil {
+			logger.Error("Task ended with error", err.Error())
+		} else {
+			logger.Info("Task ended gently", nil)
+		}
 	} else {
 		knownTasks := make([]string, 0, len(tasks))
 		for k := range tasks {
@@ -92,12 +96,12 @@ func main() {
 var sched periodic.Scheduler
 
 func schedulePeriodicTasks() {
-	sched.Register(taskIngest, 6*60*time.Minute, "ingest-update")
-	sched.Register(taskIngestDue, 6*60*time.Minute, "ingest-due-updates")
-	sched.Register(taskProcessHistoryAccount, 24*60*time.Minute, "process-history")
+	//sched.Register(taskIngest, 12*60*time.Minute, "ingest-update")
+	//sched.Register(taskIngestDue, 12*60*time.Minute, "ingest-due-updates")
+	//sched.Register(taskProcessHistoryAccount, 24*60*time.Minute, "process-history")
 	//sched.Register(taskProcessAccount, 750*time.Minute, "process-account")
-	sched.Register(taskMonthHistoryAccount, 7*24*time.Hour, "process-month-history")
-	sched.Start()
+	//sched.Register(taskMonthHistoryAccount, 7*24*time.Hour, "process-month-history")
+	//sched.Start()
 }
 
 func taskServer(ctx context.Context) error {
