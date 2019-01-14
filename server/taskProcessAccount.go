@@ -71,12 +71,12 @@ func ingestDataForAccount(ctx context.Context, aaId int) (err error) {
 	} else if aa, err = getAwsAccount(ctx, aaId, tx); err != nil {
 	} else if updateId, err = registerAccountProcessing(db.Db, aa); err != nil {
 	} else {
-		riErr := processAccountEC2Reserves(ctx, aa)
-		rdsErr := processAccountRDS(ctx, aa)
-		ec2Err := processAccountEC2(ctx, aa)
-		wHistoryErr := processAccountWeekHistory(ctx, aa)
-		historyErr := processAccountHistory(ctx, aa)
-		updateAccountProcessingCompletion(ctx, aaId, db.Db, updateId, nil, rdsErr, ec2Err, historyErr, riErr, wHistoryErr)
+		//riErr := processAccountEC2Reserves(ctx, aa)       // current
+		rdsErr := processAccountRDS(ctx, aa) // daily
+		ec2Err := processAccountEC2(ctx, aa) // daily
+		//wHistoryErr := processAccountWeekHistory(ctx, aa) // weekly
+		//historyErr := processAccountHistory(ctx, aa) // monthly
+		updateAccountProcessingCompletion(ctx, aaId, db.Db, updateId, nil, rdsErr, ec2Err, nil, nil, nil)
 	}
 	if err != nil {
 		updateAccountProcessingCompletion(ctx, aaId, db.Db, updateId, err, nil, nil, nil, nil, nil)

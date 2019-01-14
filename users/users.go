@@ -278,7 +278,6 @@ func getLDAPAuthenticatedUser(user, password string) (bool, error) {
 	return ok, err
 }
 
-
 // GetLDAPUserWithEmailPassword validate the user credentials in LDAP server to
 // then retrieve it from trackit
 func GetLDAPUserWithEmailAndPassword(ctx context.Context, db models.XODB, email string, password string) (User, error) {

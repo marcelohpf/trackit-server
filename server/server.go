@@ -60,7 +60,9 @@ var tasks = map[string]func(context.Context) error{
 	"process-account-plugins": taskProcessAccountPlugins,
 	"anomalies-detection":     taskAnomaliesDetection,
 	"check-user-entitlement":  taskCheckEntitlement,
-	"process-history":         taskProcessHistoryAccount,
+	"process-history-ec2":     taskWeeklyHistoryEc2,
+	"process-history-rds":     taskWeeklyHistoryRds,
+	"process-ri":              taskProcessRi,
 	"process-month-history":   taskMonthHistoryAccount,
 	"setup-master-account":    taskSetupMasterAccount,
 }
@@ -78,8 +80,10 @@ func main() {
 	if task, ok := tasks[config.Task]; ok {
 		if err := task(ctx); err != nil {
 			logger.Error("Task ended with error", err.Error())
+			os.Exit(1)
 		} else {
 			logger.Info("Task ended gently", nil)
+			os.Exit(0)
 		}
 	} else {
 		knownTasks := make([]string, 0, len(tasks))

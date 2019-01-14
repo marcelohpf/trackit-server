@@ -159,17 +159,39 @@ func concatErrors(tabError []error) error {
 }
 
 // getInstanceInfo sort products and call history reports
-func getWeeklyInstancesInfo(ctx context.Context, aa aws.AwsAccount, startDate time.Time, endDate time.Time) error {
+func FetchEC2Weekly(ctx context.Context, aa aws.AwsAccount) error {
+	logger := jsonlog.LoggerFromContextOrDefault(ctx)
+
+	startDate, endDate := getWeekHistoryDate()
+	logger.Info("Starting EC2 weekly", map[string]interface{}{
+		"awsAccountId": aa.Id,
+		"startDate":    startDate.Format("2006-01-02T15:04:05Z"),
+		"endDate":      endDate.Format("2006-01-02T15:04:05Z"),
+	})
+
 	ec2Cost, ec2Err := getCostPerResource(ctx, aa, startDate, endDate, "AmazonEC2")
 	cloudWatchCost, cloudWatchErr := getCostPerResource(ctx, aa, startDate, endDate, "AmazonCloudWatch")
 	if ec2Err == nil && cloudWatchErr == nil {
 		ec2Err = ec2.PutEc2WeeklyReport(ctx, ec2Cost, cloudWatchCost, aa, startDate, endDate)
 	}
+
+	return concatErrors([]error{ec2Err, cloudWatchErr})
+}
+
+func FetchRDSWeekly(ctx context.Context, aa aws.AwsAccount) error {
+	logger := jsonlog.LoggerFromContextOrDefault(ctx)
+
+	startDate, endDate := getWeekHistoryDate()
+	logger.Info("Starting EC2 weekly", map[string]interface{}{
+		"awsAccountId": aa.Id,
+		"startDate":    startDate.Format("2006-01-02T15:04:05Z"),
+		"endDate":      endDate.Format("2006-01-02T15:04:05Z"),
+	})
 	rdsCost, rdsErr := getCostPerResource(ctx, aa, startDate, endDate, "AmazonRDS")
 	if rdsErr == nil {
 		rdsErr = rds.PutRdsWeeklyReport(ctx, rdsCost, aa, startDate, endDate)
 	}
-	return concatErrors([]error{ec2Err, cloudWatchErr, rdsErr})
+	return rdsErr
 }
 
 // getInstanceInfo sort products and call history reports
@@ -210,25 +232,6 @@ func checkBillingDataCompleted(ctx context.Context, startDate time.Time, endDate
 	} else {
 		return false, nil
 	}
-}
-
-// FetchWeekHistoryInfos fetches billing data and stats of EC2 and RDS instances of the last week
-func FetchWeekHistoryInfos(ctx context.Context, aa aws.AwsAccount) error {
-	logger := jsonlog.LoggerFromContextOrDefault(ctx)
-	startDate, endDate := getWeekHistoryDate()
-	logger.Info("Starting weekly history report", map[string]interface{}{
-		"awsAccountId": aa.Id,
-		"startDate":    startDate.Format("2006-01-02T15:04:05Z"),
-		"endDate":      endDate.Format("2006-01-02T15:04:05Z"),
-	})
-	//complete, err := checkBillingDataCompleted(ctx, startDate, endDate, aa)
-	//if err != nil {
-	//	return err
-	//} else if complete == false {
-	//	logger.Info("Billing data are not completed", nil)
-	//	return nil
-	//}
-	return getWeeklyInstancesInfo(ctx, aa, startDate, endDate)
 }
 
 // FetchHistoryInfos fetches billing data and stats of EC2 and RDS instances of the last month

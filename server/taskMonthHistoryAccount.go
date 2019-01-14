@@ -82,7 +82,7 @@ func ingestMonthHistoryDataForAccount(ctx context.Context, aaId int) (err error)
 	return
 }
 
-// processAccountHistoryRDS processes EC2 and RDS data with billing data for an AwsAccount
+// processAccountHistory processes EC2 and RDS data with billing data for an AwsAccount
 func processAccountHistory(ctx context.Context, aa aws.AwsAccount) error {
 	err := history.FetchHistoryInfos(ctx, aa)
 	if err != nil {
